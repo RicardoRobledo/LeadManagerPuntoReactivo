@@ -15,7 +15,6 @@ PRODUCTION_STEPS = [
     prospector_steps.load_knowledge_catalog_step,
     prospector_steps.search_information_step,
     prospector_steps.generate_prospect_response_step,
-    prospector_steps.register_google_sheet_step,
     prospector_steps.generate_history_summary_step,
     prospector_steps.get_odoo_seller_step,
     prospector_steps.find_or_create_company_step,

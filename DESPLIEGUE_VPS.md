@@ -1,8 +1,14 @@
 # Actualización del VPS
 
-Actualizado el 13 de noviembre de 2026. El bloque siguiente identifica los archivos de la integración de Google Sheets y la búsqueda de conversaciones. Los bloques del 9 y 10 de noviembre se conservan como antecedentes: sus inventarios, recuentos y estados de migraciones no confirman el estado actual del VPS. Copia las versiones actuales de los archivos para conservar también los cambios realizados en otras sesiones.
+## Actualización vigente: retirada de Google Sheets
 
-## Actualización actual: Google Sheets y búsqueda de conversaciones (13 de noviembre de 2026)
+La integración de Google Sheets se ha eliminado. El prospector pasa de generar la respuesta a resumir el historial y continuar con Odoo y el envío al prospecto. Ya no se importa ni se encola la tarea de Sheets y `google-auth` deja de ser una dependencia del proyecto. No se requieren variables `GOOGLE_SHEETS_*` ni migraciones por esta retirada.
+
+Para actualizar una instalación existente, subir las versiones actuales de `prospector.py`, `prospector_steps.py`, `tasks.py`, `config/settings/base.py` y `requirements.txt`, y retirar `google_sheets_tasks.py` y `services/google_sheets_service.py` si todavía existen en el servidor. Comprobar el arranque de Django y reiniciar Django y los workers de Celery.
+
+Todas las referencias a Google Sheets en los inventarios siguientes son históricas: no se deben volver a subir los módulos ni las pruebas eliminadas, ni configurar sus credenciales. Los inventarios y recuentos antiguos tampoco confirman el estado actual del VPS.
+
+## Histórico: Google Sheets y búsqueda de conversaciones (13 de noviembre de 2026)
 
 ### Último ajuste: corrección de la importación circular
 

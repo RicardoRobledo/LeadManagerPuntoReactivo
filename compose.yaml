@@ -1,0 +1,173 @@
+# Preparacion inicial (Linux/VPS):
+#   cp .env.docker.example .env.docker
+#   Completar las claves en .env.docker y restringir permisos: chmod 600 .env.docker
+#   sh docker/create-volumes.sh
+#   docker compose --env-file .env.docker up -d --build
+# Usar siempre --env-file .env.docker para no cargar el .env del entorno actual.
+# Esta configuracion crea una base independiente; no importa datos existentes.
+
+name: leadmanager
+
+x-logging: &logging
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-app: &app
+  build:
+    context: .
+  image: ${APP_IMAGE:-leadmanager:local}
+  init: true
+  restart: unless-stopped
+  stop_grace_period: 2m
+  env_file:
+    - .env.docker
+  environment:
+    ENVIRONMENT: PRODUCTION
+    SECRET_KEY: ${SECRET_KEY:?Configura SECRET_KEY en .env.docker}
+    OPENAI_API_KEY: ${OPENAI_API_KEY:?Configura OPENAI_API_KEY en .env.docker}
+    DB_HOST: postgres
+    DB_PORT: "5432"
+    DB_NAME: ${POSTGRES_DB:-leadmanager}
+    DB_USER: ${POSTGRES_USER:-leadmanager}
+    DB_PASSWORD: ${POSTGRES_PASSWORD:?Configura POSTGRES_PASSWORD en .env.docker}
+    REDIS_PASSWORD: ${REDIS_PASSWORD:?Configura REDIS_PASSWORD en .env.docker}
+    WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
+  volumes:
+    - media_data:/app/media
+  networks:
+    - backend
+  logging: *logging
+
+services:
+  postgres:
+    # No cambiar de version mayor reutilizando el mismo volumen sin migrar sus datos.
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    stop_grace_period: 2m
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-leadmanager}
+      POSTGRES_USER: ${POSTGRES_USER:-leadmanager}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configura POSTGRES_PASSWORD en .env.docker}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    command:
+      - postgres
+      - -c
+      - fsync=on
+      - -c
+      - full_page_writes=on
+      - -c
+      - synchronous_commit=on
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - backend
+    logging: *logging
+
+  redis:
+    image: redis:7.4-bookworm
+    user: redis
+    restart: unless-stopped
+    stop_grace_period: 2m
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Configura REDIS_PASSWORD en .env.docker}
+    command:
+      - sh
+      - -ec
+      - exec redis-server /usr/local/etc/redis/redis.conf --requirepass "$$REDIS_PASSWORD"
+    volumes:
+      - redis_data:/data
+      - type: bind
+        source: ./docker/redis.conf
+        target: /usr/local/etc/redis/redis.conf
+        read_only: true
+        bind:
+          create_host_path: false
+    healthcheck:
+      test: ["CMD-SHELL", 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli --raw ping | grep -qx PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - backend
+    logging: *logging
+
+  migrate:
+    <<: *app
+    restart: "no"
+    command: ["python", "manage.py", "migrate", "--noinput"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    <<: *app
+    # Acceso local para el proxy HTTPS del VPS; la base y Redis no publican puertos.
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8000}:8000"
+    depends_on: &app-dependencies
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/authentication/login/', timeout=5).close()"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  worker:
+    <<: *app
+    command: ["celery", "-A", "config", "worker", "--loglevel=info", "--concurrency=2"]
+    depends_on: *app-dependencies
+
+  beat:
+    <<: *app
+    # Mantener una sola instancia de este servicio.
+    command:
+      - celery
+      - -A
+      - config
+      - beat
+      - --loglevel=info
+      - --schedule=/app/celerybeat/celerybeat-schedule
+      - --pidfile=/tmp/celerybeat.pid
+    volumes:
+      - media_data:/app/media
+      - beat_data:/app/celerybeat
+    depends_on: *app-dependencies
+
+networks:
+  backend:
+    driver: bridge
+
+# Se crean una sola vez con docker/create-volumes.sh. Compose no los elimina
+# con down ni con down -v. El borrado manual y las fallas de disco requieren respaldos.
+volumes:
+  postgres_data:
+    name: leadmanager_pg_data
+    external: true
+  redis_data:
+    name: leadmanager_redis_data
+    external: true
+  media_data:
+    name: leadmanager_media
+    external: true
+  beat_data:
+    name: leadmanager_beat_data
+    external: true

@@ -218,3 +218,49 @@ class ProspectConversationIdentityTests(TestCase):
         self.assertIn('GIG', message['content'])
         self.assertEqual(ProspectModel.objects.count(), 2)
 
+    def test_failed_new_turn_can_be_retried_without_duplicate_messages(self):
+        ctx = self.context('form')
+        conversation = self.process_identity(ctx)
+
+        self.assertEqual(steps.revertir_turno(ctx), -1)
+        self.assertFalse(ConversationModel.objects.filter(pk=conversation.pk).exists())
+        self.assertFalse(ChatHistoryModel.objects.filter(conversation_id=conversation.pk).exists())
+
+        retry = self.process_identity(self.context('form'))
+
+        self.assertEqual(ConversationModel.objects.count(), 1)
+        self.assertEqual(retry.messages.count(), 1)
+
+    def test_failed_turn_preserves_existing_messages_before_retry(self):
+        conversation = ConversationModel.objects.create(
+            source='form', session_id='diana@gig.example', state=ConversationStateEnum.OPEN,
+        )
+        previous = ChatHistoryModel.objects.create(
+            conversation=conversation,
+            message={'role': 'assistant', 'content': 'Mensaje del turno anterior.'},
+        )
+        ctx = self.context('form')
+        self.process_identity(ctx)
+
+        self.assertEqual(steps.revertir_turno(ctx), 1)
+        self.assertEqual(list(conversation.messages.values_list('pk', flat=True)), [previous.pk])
+
+        retry = self.process_identity(self.context('form'))
+
+        self.assertEqual(retry.pk, conversation.pk)
+        self.assertEqual(retry.messages.count(), 2)
+        self.assertTrue(retry.messages.filter(pk=previous.pk).exists())
+
+    def test_generated_response_preserves_the_conversation_on_later_failure(self):
+        ctx = self.context('form')
+        conversation = self.process_identity(ctx)
+        ctx['response_to_prospect'] = {'reply_to_customer': 'Respuesta generada.'}
+        ChatHistoryModel.objects.create(
+            conversation=conversation,
+            message={'role': 'assistant', 'content': 'Respuesta generada.'},
+        )
+
+        self.assertEqual(steps.revertir_turno(ctx), 0)
+        self.assertTrue(ConversationModel.objects.filter(pk=conversation.pk).exists())
+        self.assertEqual(conversation.messages.count(), 2)
+

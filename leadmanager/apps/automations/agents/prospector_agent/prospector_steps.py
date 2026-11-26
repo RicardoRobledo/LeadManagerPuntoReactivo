@@ -11,16 +11,14 @@ from leadmanager.apps.documents.models import DocumentModel
 from leadmanager.apps.prospects.models import ProspectModel, ChatHistoryModel, ConversationModel, ConversationStateEnum, EmailMessageModel, EmailMessageStatusEnum
 from leadmanager.apps.automations.models import (
     AgentEventModel,
-    AgentModel,
     LearningAnnotationModel,
 )
 from leadmanager.apps.automations.agent_catalog import get_agent_configuration
-from leadmanager.apps.automations.agent_configuration import DEFAULT_BUSINESS_UNIT_NAME, render_response_prompt
+from leadmanager.apps.automations.agent_configuration import render_response_prompt
 from .schemas.configured_answer import configured_answer_schema
 
 from ...services.imap_service import send_email, casos_de_exito_cabe_como_adjunto
 from ...services.odoo_service import find_person_by_source, find_or_create_company, create_or_update_lead
-from ...google_sheets_tasks import register_google_sheet_lead_task
 from .prospect_resource_handler import ProspectResourceHandler
 from .schemas.prospect_schema import SearchSchema
 from ..general_schemas import ValidationSchema
@@ -139,14 +137,11 @@ def revertir_turno(ctx):
         if conversation is None:
             return 0
 
-        if ctx.get('_conversacion_nueva') and not ctx.get('_google_sheets_registration_attempted'):
+        if ctx.get('_conversacion_nueva'):
             # La creo esta corrida y quedaria vacia: se va entera, y el
             # CASCADE se lleva sus mensajes.
             ConversationModel.objects.filter(id=conversation.id).delete()
             return -1
-
-        # Sheets puede haber registrado o estar por registrar este ID.
-        # Conservarlo evita otra fila cuando el pipeline vuelva a intentarlo.
 
         marca = ctx.get('_marca_historial')
 
@@ -891,64 +886,6 @@ def generate_history_summary_step(agent, ctx):
             message="No se generó el resumen del historial debido a que no se ha sobrepasado el límite de mensajes para resumir",
             level=AgentEventModel.LevelEnum.INFO,
         )
-
-
-def register_google_sheet_step(agent, ctx):
-    """Encola el registro después de generar la respuesta y su análisis CRM.
-
-    Usa la unidad detectada y completa el contacto con el análisis actual,
-    conservando los datos originales recibidos cuando estén disponibles.
-    La tarea comprueba el ID en Sheets antes de insertar, en cada intento.
-    """
-    if getattr(agent, 'mode', AgentModel.ModeEnum.PRODUCTION) != AgentModel.ModeEnum.PRODUCTION:
-        ctx['google_sheet_registration'] = {'status': 'skipped', 'reason': 'shadow_mode'}
-        return
-
-    conversation = ctx.get('conversation')
-    if conversation is None or not conversation.pk:
-        raise ValueError('No hay una conversación guardada para registrar en Google Sheets.')
-
-    response = ctx.get('response_to_prospect')
-    crm_update = response.get('crm_update') if isinstance(response, dict) else None
-    if not isinstance(crm_update, dict):
-        raise ValueError('Se necesita la respuesta generada con crm_update para registrar en Google Sheets.')
-    contact = crm_update.get('contacto') or {}
-
-    source = ctx.get('source')
-    received = ctx.get(source) or {}
-    sender = (received.get('from') or {}) if source == 'email' else {}
-    email_identifier = ctx.get('source_identifier') if source in ('email', 'form', 'web') else ''
-    phone_identifier = ctx.get('source_identifier') if source == 'whatsapp' else ''
-    business_unit = (
-        crm_update.get('unidad_negocio_detectada')
-        or received.get('business_unit') or received.get('unidad_negocio')
-        or DEFAULT_BUSINESS_UNIT_NAME
-    )
-    payload = {
-        'business_unit': business_unit,
-        'conversation_id': conversation.pk,
-        'email': sender.get('email') or received.get('email') or email_identifier or contact.get('correo') or '',
-        'name': sender.get('name') or received.get('name') or received.get('nombre') or contact.get('nombre') or '',
-        'phone': received.get('phone') or received.get('telefono') or phone_identifier or contact.get('telefono') or '',
-        'enterprise': (
-            received.get('company_name') or received.get('enterprise')
-            or received.get('empresa') or contact.get('empresa') or ''
-        ),
-        'received_at': conversation.created_at.isoformat(),
-    }
-
-    # Incluso un fallo al publicar puede ser ambiguo. El reintento debe
-    # conservar este ID y consultar Sheets antes de intentar otra alta.
-    ctx['_google_sheets_registration_attempted'] = True
-    task = register_google_sheet_lead_task.delay(payload)
-    ctx['google_sheet_registration'] = {
-        'status': 'queued', 'task_id': task.id,
-        'conversation_id': conversation.pk, 'business_unit': business_unit,
-    }
-    agent.log_event(
-        ctx, message='Registro de la conversación en Google Sheets encolado',
-        data=ctx['google_sheet_registration'], level=AgentEventModel.LevelEnum.INFO,
-    )
 
 
 def get_odoo_seller_step(agent, ctx):

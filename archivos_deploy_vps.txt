@@ -1,5 +1,23 @@
-ACTUALIZACIÓN VIGENTE PARA EL VPS - 13 DE NOVIEMBRE DE 2026
-======================================================
+ACTUALIZACIÓN VIGENTE - RETIRADA DE GOOGLE SHEETS
+==============================================
+
+Actualizar los archivos actuales:
+requirements.txt
+config/settings/base.py
+leadmanager/apps/automations/agents/prospector_agent/prospector.py
+leadmanager/apps/automations/agents/prospector_agent/prospector_steps.py
+leadmanager/apps/automations/tasks.py
+
+Si existen en el servidor, retirar google_sheets_tasks.py y
+services/google_sheets_service.py de leadmanager/apps/automations/.
+No se requieren variables GOOGLE_SHEETS_* ni migraciones por esta retirada.
+Comprobar Django y reiniciar Django y los workers de Celery.
+
+Todas las referencias siguientes a Google Sheets son historicas y no deben
+usarse para restaurar los modulos o pruebas eliminados ni sus credenciales.
+
+INVENTARIO HISTÓRICO DEL 13 DE NOVIEMBRE DE 2026
+=============================================
 
 Este bloque documenta Google Sheets y la búsqueda por correo en Conversaciones.
 La lista indica archivos locales que se deben copiar; no confirma qué versión

@@ -29,8 +29,6 @@ from leadmanager.apps.prospects.web_chat import WEB_CHAT_MESSAGE_LIMIT
 from leadmanager.apps.prospects.qualification import filter_by_semaforo
 from leadmanager.apps.prospects.crm_data import merge_crm_payload, parse_json_object
 
-# Reexportar para el descubrimiento de Celery y las referencias existentes.
-from .google_sheets_tasks import register_google_sheet_lead_task
 from .agents.agent_base import Agent, StepExecutionError
 from .agents.prospector_agent.shadow_steps import SHADOW_STEPS
 from .services.agent_execution import run_production_agent

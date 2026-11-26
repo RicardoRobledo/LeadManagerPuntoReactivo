@@ -51,7 +51,7 @@ class ReproduccionEntregaCorreos(TestCase):
             'response_to_prospect': {'reply_to_customer': 'Respuesta para el cliente.', 'crm_update': {}},
             'history': [{'role': 'user', 'content': 'Información'}] * 3,
         }
-        self.agent = Agent('prospector', [generate_history_summary_step, send_response_to_prospect_step])
+        self.agent = Agent('prospector', steps=[generate_history_summary_step, send_response_to_prospect_step])
 
     def test_alcanzar_el_limite_con_resumen_correcto_si_continua_y_envia_la_respuesta(self):
         self.agent.run(self.ctx)
