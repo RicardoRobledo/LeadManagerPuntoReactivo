@@ -29,9 +29,9 @@ x-app: &app
     OPENAI_API_KEY: ${OPENAI_API_KEY:?Configura OPENAI_API_KEY en .env.docker}
     DB_HOST: postgres
     DB_PORT: "5432"
-    DB_NAME: ${POSTGRES_DB:-leadmanager}
-    DB_USER: ${POSTGRES_USER:-leadmanager}
-    DB_PASSWORD: ${POSTGRES_PASSWORD:?Configura POSTGRES_PASSWORD en .env.docker}
+    DB_NAME: ${DB_NAME:-leadmanager}
+    DB_USER: ${DB_USER:-leadmanager}
+    DB_PASSWORD: ${DB_PASSWORD:?Configura DB_PASSWORD en .env.docker}
     REDIS_PASSWORD: ${REDIS_PASSWORD:?Configura REDIS_PASSWORD en .env.docker}
     WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
   volumes:
@@ -47,9 +47,10 @@ services:
     restart: unless-stopped
     stop_grace_period: 2m
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-leadmanager}
-      POSTGRES_USER: ${POSTGRES_USER:-leadmanager}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configura POSTGRES_PASSWORD en .env.docker}
+      # La imagen oficial recibe las mismas credenciales DB_* que usa Django.
+      POSTGRES_DB: ${DB_NAME:-leadmanager}
+      POSTGRES_USER: ${DB_USER:-leadmanager}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Configura DB_PASSWORD en .env.docker}
       POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
     command:
       - postgres

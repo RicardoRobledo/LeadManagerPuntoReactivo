@@ -1,6 +1,7 @@
 /Dockerfile text eol=lf
 /.dockerignore text eol=lf
 /compose.yaml text eol=lf
+/.github/workflows/*.yml text eol=lf
 /.env.docker.example text eol=lf
 /docker/*.sh text eol=lf
 /docker/*.conf text eol=lf

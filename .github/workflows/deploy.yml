@@ -1,0 +1,159 @@
+name: Construir y desplegar al VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+# No interrumpir un despliegue que ya este aplicando migraciones.
+concurrency:
+  group: leadmanager-production
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Construir y publicar en GHCR
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.image.outputs.name }}
+      digest: ${{ steps.publish.outputs.digest }}
+    steps:
+      - name: Descargar el codigo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verificar el script de despliegue
+        run: |
+          bash -n docker/deploy.sh
+          python3 -m unittest diagnostico.test_deploy -v
+
+      - name: Definir el nombre de la imagen
+        id: image
+        env:
+          IMAGE_REPOSITORY: ${{ vars.GHCR_IMAGE_NAME }}
+        run: |
+          image_repository="${IMAGE_REPOSITORY:-${GITHUB_REPOSITORY#*/}}"
+          image_repository="${image_repository,,}"
+          if [[ ! "$image_repository" =~ ^[a-z0-9]+([._-][a-z0-9]+)*$ ]]; then
+            echo '::error::GHCR_IMAGE_NAME debe ser un nombre de imagen sin registro ni etiqueta.'
+            exit 1
+          fi
+          echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/${image_repository}" >> "$GITHUB_OUTPUT"
+
+      - name: Preparar Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Autenticar la publicacion en GHCR
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Construir y publicar la imagen
+        id: publish
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.image.outputs.name }}:sha-${{ github.sha }}
+            ${{ steps.image.outputs.name }}:production
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Actualizar el VPS
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      DEPLOY_DIR: /var/www/LeadManagerPuntoReactivo
+      DEPLOY_IMAGE: ${{ needs.build.outputs.image }}@${{ needs.build.outputs.digest }}
+    steps:
+      - name: Descargar los archivos de despliegue
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Preparar SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PORT: ${{ vars.VPS_SSH_PORT || '22' }}
+        run: |
+          for variable in VPS_HOST VPS_USER VPS_SSH_KEY; do
+            if [[ -z "${!variable}" ]]; then
+              echo "::error::Falta configurar ${variable} en GitHub. Consulta DESPLIEGUE_VPS.md."
+              exit 1
+            fi
+          done
+          [[ "$VPS_HOST" =~ ^[a-zA-Z0-9._:-]+$ && "$VPS_HOST" != -* ]]
+          [[ "$VPS_USER" =~ ^[a-zA-Z_][a-zA-Z0-9_.-]*$ ]]
+          [[ "$VPS_SSH_PORT" =~ ^[0-9]{1,5}$ ]]
+          ssh_port=$((10#$VPS_SSH_PORT))
+          (( ssh_port >= 1 && ssh_port <= 65535 ))
+
+          umask 077
+          printf '%s\n' "$VPS_SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/leadmanager_ssh_key"
+          # Registrar la clave recibida para las conexiones de esta ejecucion.
+          ssh-keyscan -T 15 -p "$ssh_port" -t ed25519 "$VPS_HOST" > "$RUNNER_TEMP/leadmanager_known_hosts"
+          test -s "$RUNNER_TEMP/leadmanager_known_hosts"
+          cat > "$RUNNER_TEMP/leadmanager_ssh_config" <<EOF
+          Host leadmanager-vps
+            HostName ${VPS_HOST}
+            User ${VPS_USER}
+            Port ${ssh_port}
+            IdentityFile ${RUNNER_TEMP}/leadmanager_ssh_key
+            UserKnownHostsFile ${RUNNER_TEMP}/leadmanager_known_hosts
+            StrictHostKeyChecking yes
+            BatchMode yes
+            IdentitiesOnly yes
+            ConnectTimeout 15
+            ServerAliveInterval 15
+            ServerAliveCountMax 4
+          EOF
+
+      - name: Copiar los archivos y desplegar la imagen publicada
+        env:
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+        run: |
+          if [[ -z "$GHCR_USERNAME" || -z "$GHCR_PULL_TOKEN" ]]; then
+            echo '::error::Faltan GHCR_USERNAME o GHCR_PULL_TOKEN en los secretos de GitHub.'
+            exit 1
+          fi
+          ssh_config="$RUNNER_TEMP/leadmanager_ssh_config"
+          bundle="$RUNNER_TEMP/leadmanager-deploy.tgz"
+          remote_archive="$DEPLOY_DIR/.leadmanager-${GITHUB_SHA}.tgz"
+          tar -czf "$bundle" compose.yaml .env.docker.example docker/deploy.sh docker/create-volumes.sh docker/redis.conf
+          ssh -F "$ssh_config" leadmanager-vps "mkdir -p '$DEPLOY_DIR' && test -w '$DEPLOY_DIR'"
+          scp -F "$ssh_config" "$bundle" "leadmanager-vps:$remote_archive"
+          ssh -F "$ssh_config" leadmanager-vps "tar -xzf '$remote_archive' -C '$DEPLOY_DIR' && rm -f -- '$remote_archive'"
+          printf '%s\n%s\n' "$GHCR_USERNAME" "$GHCR_PULL_TOKEN" |
+            ssh -F "$ssh_config" leadmanager-vps "cd '$DEPLOY_DIR' && bash docker/deploy.sh '$DEPLOY_IMAGE'"
+
+      - name: Limpiar las credenciales temporales del runner
+        if: always()
+        run: |
+          rm -f -- "$RUNNER_TEMP/leadmanager_ssh_key" "$RUNNER_TEMP/leadmanager_known_hosts" \
+            "$RUNNER_TEMP/leadmanager_ssh_config" "$RUNNER_TEMP/leadmanager-deploy.tgz"

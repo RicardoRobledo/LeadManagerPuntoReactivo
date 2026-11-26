@@ -1,5 +1,41 @@
 # Actualización del VPS
 
+## Despliegue automático desde GitHub Actions
+
+`.github/workflows/deploy.yml` se ejecuta al hacer `push` a `main` o desde **Actions → Construir y desplegar al VPS → Run workflow** en esa rama. Primero verifica el script de despliegue con pruebas que simulan Docker, sin red ni datos reales. Construye una imagen Linux AMD64 y publica `ghcr.io/ricardorobledo/leadmanagerpuntoreactivo:production` y una etiqueta por commit. El VPS recibe la referencia exacta por digest y los archivos de Compose, Redis y despliegue del mismo commit. No necesita clonar el repositorio ni descargar código con Git para este flujo.
+
+Configurar en **Settings → Secrets and variables → Actions → Secrets** los cinco secretos:
+
+- `VPS_HOST`: IP o nombre del VPS, sin protocolo ni puerto.
+- `VPS_USER`: usuario SSH con acceso a Docker y permiso de escritura en `/var/www/LeadManagerPuntoReactivo`.
+- `VPS_SSH_KEY`: clave privada SSH sin contraseña cuya clave pública esté autorizada para ese usuario.
+- `GHCR_USERNAME`: cuenta con acceso de lectura al paquete de GHCR.
+- `GHCR_PULL_TOKEN`: token con `read:packages` y acceso al paquete. La publicación usa el `GITHUB_TOKEN` automático con `packages: write`.
+
+El workflow obtiene automáticamente la clave pública del servidor con `ssh-keyscan` para las conexiones de esa ejecución, sin compararla con una huella configurada previamente. Se autentica con `VPS_SSH_KEY`.
+
+Opcionalmente, en la pestaña **Variables**, `VPS_SSH_PORT` cambia el puerto SSH (por defecto `22`) y `GHCR_IMAGE_NAME` cambia el nombre de la imagen dentro de tu cuenta (por defecto, el nombre del repositorio en minúsculas; sin registro ni etiqueta). Ninguna de estas variables es obligatoria.
+
+Preparar una sola vez en el VPS:
+
+1. Instalar Docker Engine y el plugin Compose. `VPS_USER` debe poder ejecutar `docker info` sin solicitar contraseña.
+2. Crear `/var/www/LeadManagerPuntoReactivo` y dar acceso de lectura/escritura a ese mismo usuario. Usa el mismo usuario en los despliegues posteriores.
+3. Crear allí `.env.docker`, completar `SECRET_KEY`, `OPENAI_API_KEY`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `REDIS_PASSWORD` y las integraciones que utilices, y restringir sus permisos con `chmod 600 .env.docker`. Mantener valores numéricos válidos, como `ODOO_SELLER_ID`, `CHAT_HISTORY_LIMIT`, `IMAP_PORT` y `EMAIL_PORT`. El archivo debe ser legible por `VPS_USER`.
+
+El workflow copia los archivos necesarios aunque el directorio solo contenga `.env.docker`. Conserva el `.env` existente. `docker/deploy.sh` crea los cuatro volúmenes externos durante la primera preparación y los reutiliza. Después de un despliegue correcto registra `.last-deploy`; si un volumen falta en un despliegue posterior, se detiene para evitar inicializar una base vacía.
+
+El script descarga la imagen, levanta PostgreSQL y Redis, comprueba Django y detiene web, worker y Beat antes de aplicar las migraciones pendientes. Los inicia después de que terminen las migraciones y espera a que la web esté saludable. Habrá una breve interrupción durante esa actualización. Si un paso falla, el workflow informa el error; no revierte automáticamente migraciones.
+
+Al completar el despliegue, actualiza únicamente `APP_IMAGE` en `.env.docker` con el digest verificado. El login de GHCR se guarda en un directorio temporal que se elimina al terminar. Los volúmenes y los usuarios existentes se conservan; el workflow no ejecuta `createsuperuser` ni `seed_agents`.
+
+Para crear el primer administrador después del primer despliegue, desde el directorio del VPS:
+
+```bash
+docker compose --env-file .env.docker exec web python manage.py createsuperuser
+```
+
+La web sigue publicada en `127.0.0.1:8000`. Para acceder mediante un dominio, configurar por separado el proxy HTTPS y los ajustes de dominio/CSRF de Django.
+
 ## Actualización vigente: retirada de Google Sheets
 
 La integración de Google Sheets se ha eliminado. El prospector pasa de generar la respuesta a resumir el historial y continuar con Odoo y el envío al prospecto. Ya no se importa ni se encola la tarea de Sheets y `google-auth` deja de ser una dependencia del proyecto. No se requieren variables `GOOGLE_SHEETS_*` ni migraciones por esta retirada.

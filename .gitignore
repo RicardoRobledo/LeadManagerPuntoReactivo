@@ -1,5 +1,9 @@
 /.env
 /.env2
 /.env.docker
+/.env.docker.tmp.*
+/.deploy.lock
+/.last-deploy
+/.leadmanager-*.tgz
 
 google_credentials/
