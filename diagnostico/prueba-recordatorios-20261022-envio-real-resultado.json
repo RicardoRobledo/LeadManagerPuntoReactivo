@@ -1,0 +1,25 @@
+{
+  "lote": "prueba-recordatorios-20261022",
+  "smtp_real": true,
+  "destinatario_prueba": "yupaglu@gmail.com",
+  "datos_originales_conservados": true,
+  "escenarios": [
+    {
+      "escenario": "ENVÍO REAL DE PRUEBA: una amarilla por canal",
+      "resultado": {
+        "procesados": 3
+      },
+      "ids_seleccionados": [
+        282,
+        284,
+        286
+      ]
+    }
+  ],
+  "ids_aceptados_smtp": [
+    282,
+    284,
+    286
+  ],
+  "ids_fallidos": []
+}

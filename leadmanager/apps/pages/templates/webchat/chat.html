@@ -1,0 +1,2055 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Chat · Estrasol</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        :root {
+            /* Paleta Punto Reactivo: azul y violeta sobre azul marino, con acentos cian. */
+            --brand-from: #2451f5;
+            --brand-to: #5524ef;
+            --brand-gradient: linear-gradient(135deg, var(--brand-from) 0%, var(--brand-to) 100%);
+            --brand-solid: #2451f5;
+            --brand-ink: #1942d9;
+            --brand-tint: #eef2ff;
+            --brand-tint-border: #d9dfff;
+            --accent: #000211;
+            --accent-hover: #141a3d;
+            --text-main: #000211;
+            --text-muted: #5d6b87;
+            --bg-app: #f4f7ff;
+            --bubble-bot: #ffffff;
+            --bubble-bot-border: #e2e7f3;
+            --radius-lg: 22px;
+            --radius-md: 16px;
+            --shadow: 0 10px 30px rgba(0, 2, 17, 0.12);
+            --transition: all 0.25s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        button, input {
+            outline: none !important;
+        }
+
+        button:focus-visible, input:focus-visible {
+            outline: 2px solid var(--brand-solid);
+            outline-offset: 2px;
+        }
+
+        html, body {
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg-app);
+            color: var(--text-main);
+            -webkit-font-smoothing: antialiased;
+            overflow: hidden;
+        }
+
+        /* Fondo decorativo suave */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at 15% 10%, rgba(0, 183, 220, 0.12), transparent 40%),
+                radial-gradient(circle at 85% 90%, rgba(85, 36, 239, 0.09), transparent 45%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .chat-app {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            height: 100dvh;
+            background: var(--bg-app);
+        }
+
+        /* En modo standalone (abierto directo en navegador) se muestra como tarjeta */
+        @media (min-width: 720px) {
+            body.standalone {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 32px;
+            }
+            body.standalone .chat-app {
+                height: min(760px, calc(100dvh - 64px));
+                max-width: 440px;
+                border-radius: var(--radius-lg);
+                overflow: hidden;
+                box-shadow: 0 40px 90px rgba(0, 2, 17, 0.28);
+                border: 1px solid rgba(255, 255, 255, 0.6);
+            }
+        }
+
+        /* ---------- HEADER ---------- */
+        .chat-header {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 16px;
+            background: linear-gradient(135deg, var(--brand-to) 0%, var(--brand-from) 100%);
+            color: #fff;
+            padding-top: max(14px, env(safe-area-inset-top));
+        }
+
+        /* Barra de pasos. Vive siempre bajo el header: marca en que punto
+           del flujo va el visitante y NO se oculta al avanzar, para que se
+           vea que los pasos anteriores siguen ahi. */
+        .steps {
+            flex: 0 0 auto;
+            background: var(--accent);
+            padding: 9px 14px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .steps::-webkit-scrollbar {
+            display: none;
+        }
+
+        .steps-list {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            list-style: none;
+            min-width: max-content;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+            color: rgba(255, 255, 255, 0.62);
+            transition: var(--transition);
+        }
+
+        /* El chevron cuelga del paso siguiente, no del anterior: asi no
+           queda una flecha suelta al final de la lista. */
+        .step + .step::before {
+            content: '';
+            width: 5px;
+            height: 5px;
+            margin-right: 2px;
+            border-top: 1.6px solid rgba(255, 255, 255, 0.28);
+            border-right: 1.6px solid rgba(255, 255, 255, 0.28);
+            transform: rotate(45deg);
+        }
+
+        .step-num {
+            flex: 0 0 auto;
+            width: 19px;
+            height: 19px;
+            border-radius: 50%;
+            border: 1.6px solid rgba(255, 255, 255, 0.32);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .step.is-done {
+            color: rgba(255, 255, 255, 0.78);
+        }
+
+        .step.is-done .step-num {
+            background: var(--brand-solid);
+            border-color: var(--brand-solid);
+            color: #fff;
+        }
+
+        .step.is-active {
+            color: #fff;
+        }
+
+        .step.is-active .step-num {
+            background: var(--brand-gradient);
+            border-color: transparent;
+            color: #fff;
+            box-shadow: 0 0 0 3px rgba(36, 81, 245, 0.22);
+        }
+
+        .agent {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .avatar {
+            position: relative;
+            width: 44px;
+            height: 44px;
+            flex: 0 0 auto;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.18);
+            border: 2px solid rgba(255, 255, 255, 0.65);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 14px rgba(0, 2, 17, 0.18);
+        }
+
+        .avatar svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .avatar-img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .status-dot {
+            position: absolute;
+            right: -1px;
+            bottom: -1px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00b7dc;
+            border: 2px solid var(--brand-from);
+            box-shadow: 0 0 0 3px rgba(0, 183, 220, 0.25);
+        }
+
+        .agent-meta {
+            min-width: 0;
+        }
+
+        .agent-name {
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+            line-height: 1.2;
+        }
+
+        .agent-sub {
+            font-size: 12px;
+            font-weight: 600;
+            opacity: 1;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .agent-sub .pulse {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #00b7dc;
+            animation: pulse 1.6s infinite ease-in-out;
+            flex: 0 0 auto;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.7); }
+        }
+
+        .header-actions {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Visible siempre, a diferencia de .btn-close, que solo aparece
+           cuando el chat va embebido en un iframe. */
+        .btn-reset {
+            flex: 0 0 auto;
+            width: 38px;
+            height: 38px;
+            border: none;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.16);
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .btn-reset:hover {
+            background: rgba(255, 255, 255, 0.28);
+        }
+
+        .btn-reset svg {
+            width: 17px;
+            height: 17px;
+        }
+
+        .btn-close {
+            flex: 0 0 auto;
+            width: 38px;
+            height: 38px;
+            border: none;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.16);
+            color: #fff;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .btn-close:hover {
+            background: rgba(255, 255, 255, 0.28);
+        }
+
+        .btn-close svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Visible solo cuando está embebido en un iframe */
+        body.embedded .btn-close {
+            display: flex;
+        }
+
+        /* ---------- CUERPO / MENSAJES ---------- */
+        .chat-body {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            position: relative;
+        }
+
+        .messages {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            padding: 18px 16px 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .messages::-webkit-scrollbar {
+            width: 0;
+            background: transparent;
+        }
+
+        .msg {
+            display: flex;
+            animation: msgIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes msgIn {
+            from { opacity: 0; transform: translateY(10px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .msg.bot { justify-content: flex-start; }
+        .msg.user { justify-content: flex-end; }
+
+        .bubble {
+            /* El tope del ancho vive en el envoltorio que crea
+               ``appendMessage``. Aqui un 85% se resolveria contra ese
+               envoltorio, que ya viene encogido al contenido, y estrangulaba
+               dos veces: un correo o una url quedaban partidos a la mitad. */
+            max-width: 100%;
+            padding: 12px 15px;
+            font-size: 14.5px;
+            line-height: 1.55;
+            border-radius: 18px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .msg.bot .bubble {
+            background: var(--bubble-bot);
+            border: 1px solid var(--bubble-bot-border);
+            border-top-left-radius: 6px;
+            color: #000211;
+            box-shadow: 0 2px 8px rgba(0, 2, 17, 0.05);
+        }
+
+        .msg.user .bubble {
+            background: var(--brand-gradient);
+            color: #fff;
+            border-top-right-radius: 6px;
+            box-shadow: 0 6px 16px rgba(36, 81, 245, 0.28);
+        }
+
+        .msg-meta {
+            margin-top: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .msg.user .msg-meta { text-align: right; }
+
+        /* Markdown dentro de las burbujas del bot */
+        .bubble p { margin: 0 0 8px; }
+        .bubble p:last-child { margin-bottom: 0; }
+        .bubble ul, .bubble ol { margin: 0 0 8px; padding-left: 20px; }
+        .bubble li { margin-bottom: 4px; }
+        .bubble strong { font-weight: 700; }
+        .bubble a { color: var(--brand-ink); }
+        .msg.user .bubble a { color: #fff; text-decoration: underline; }
+        .bubble code {
+            background: rgba(0, 2, 17, 0.06);
+            padding: 2px 5px;
+            border-radius: 5px;
+            font-size: 13px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        }
+        .msg.user .bubble code { background: rgba(255, 255, 255, 0.2); }
+
+        /* Indicador escribiendo */
+        .typing {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 2px;
+        }
+        .typing span {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #2451f5;
+            animation: typingDot 1.3s infinite ease-in-out both;
+        }
+        .typing span:nth-child(2) { animation-delay: 0.18s; }
+        .typing span:nth-child(3) { animation-delay: 0.36s; }
+
+        @keyframes typingDot {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-5px); opacity: 1; }
+        }
+
+        /* ---------- FOOTER / INPUT ---------- */
+        .chat-footer {
+            flex: 0 0 auto;
+            padding: 10px 16px;
+            padding-bottom: max(10px, env(safe-area-inset-bottom));
+            background: #fff;
+            border-top: 1px solid var(--bubble-bot-border);
+        }
+
+        .input-bar {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+        }
+
+        .input-wrap {
+            flex: 1 1 auto;
+            display: flex;
+            align-items: center;
+            background: #f4f7ff;
+            border: 1.5px solid transparent;
+            border-radius: 999px;
+            padding: 4px 6px 4px 18px;
+            transition: var(--transition);
+        }
+
+        .input-wrap:focus-within {
+            background: #fff;
+            border-color: var(--brand-solid);
+            box-shadow: 0 0 0 4px rgba(36, 81, 245, 0.16);
+        }
+
+        .input-wrap input {
+            flex: 1 1 auto;
+            min-width: 0;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-family: inherit;
+            font-size: 15px;
+            color: var(--text-main);
+            padding: 10px 0;
+        }
+
+        .input-wrap input::placeholder {
+            color: #5d6b87;
+        }
+
+        /* Estado enviando: el turno esta abierto y el input no acepta nada */
+        .input-bar.busy .input-wrap {
+            opacity: 0.65;
+        }
+
+        .input-wrap input:disabled {
+            cursor: not-allowed;
+        }
+
+        /* Variante de varios renglones para el brief. La pastilla de 999px se
+           deforma con mas de una linea, asi que el radio baja al de las
+           tarjetas y el texto arranca arriba. */
+        .input-wrap.is-multiline {
+            align-items: flex-start;
+            border-radius: var(--radius-md);
+            padding: 8px 12px;
+        }
+
+        .input-wrap textarea {
+            flex: 1 1 auto;
+            min-width: 0;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-family: inherit;
+            font-size: 15px;
+            line-height: 1.45;
+            color: var(--text-main);
+            resize: none;
+        }
+
+        .input-wrap textarea::placeholder {
+            color: #5d6b87;
+        }
+
+        /* Con un campo alto, el boton va abajo como en cualquier chat, no
+           flotando a media altura. */
+        .brief-row {
+            align-items: flex-end;
+        }
+
+        /* ---------- PUERTA DE CORREO ---------- */
+        /* .input-bar declara display:flex, y una regla de autor le gana al
+           display:none que el navegador aplica a [hidden]. Sin este !important
+           el formulario oculto se seguiria viendo. */
+        [hidden] {
+            display: none !important;
+        }
+
+        .email-gate {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .email-gate-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 0.2px;
+        }
+
+        .message-counter {
+            margin-top: 8px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .message-limit-actions {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .email-gate-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .email-gate-error {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: var(--brand-ink);
+        }
+
+        /* El "(opcional)" tiene que leerse como aclaración, no como parte
+           del nombre del campo. */
+        .email-gate-optional {
+            font-weight: 500;
+            text-transform: none;
+            color: #5d6b87;
+        }
+
+        .unit-gate {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .unit-gate-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-height: min(320px, 44dvh);
+            overflow-y: auto;
+            padding: 2px;
+        }
+
+        .unit-chip {
+            border: 1.5px solid var(--brand-tint-border);
+            background: var(--brand-tint);
+            color: var(--brand-ink);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 700;
+            padding: 9px 14px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .unit-chip:hover {
+            background: var(--brand-gradient);
+            border-color: transparent;
+            color: #fff;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(36, 81, 245, 0.28);
+        }
+
+        .unit-chip:active {
+            transform: scale(0.96);
+        }
+
+        /* "No estoy seguro": una salida, no una unidad mas. Sin relleno y con
+           borde punteado para que no compita con las unidades. El hover va
+           aparte porque .unit-chip:hover tiene la misma especificidad que esta
+           regla y, al quedar antes, perderia. */
+        .unit-chip.is-secondary {
+            background: transparent;
+            border-style: dashed;
+            border-color: #d9dfff;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .unit-chip.is-secondary:hover {
+            background: #fff;
+            border-color: var(--brand-solid);
+            color: var(--brand-ink);
+            box-shadow: none;
+        }
+
+        .btn-send {
+            flex: 0 0 auto;
+            width: 44px;
+            height: 44px;
+            border: none;
+            border-radius: 50%;
+            background: var(--brand-gradient);
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            box-shadow: 0 6px 16px rgba(36, 81, 245, 0.35);
+        }
+
+        .btn-send:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 9px 20px rgba(36, 81, 245, 0.45);
+        }
+
+        .btn-send:active {
+            transform: scale(0.94);
+        }
+
+        .btn-send:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-send svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* iOS hace zoom a la página al enfocar un input de menos de 16px, y
+           dentro del widget ese zoom se lo lleva el sitio del cliente
+           completo. */
+        @media (max-width: 640px), (pointer: coarse) {
+            .input-wrap input,
+            .input-wrap textarea {
+                font-size: 16px;
+            }
+        }
+
+        /* Panel bajo (laptop con poca altura): con los 9 chips y los
+           márgenes normales, la zona de mensajes se quedaba en una línea. */
+        @media (max-height: 520px) {
+            .chat-header {
+                padding-top: 10px;
+                padding-bottom: 10px;
+            }
+
+            .steps {
+                padding: 7px 12px;
+            }
+
+            .step {
+                font-size: 11px;
+                gap: 5px;
+            }
+
+            .avatar {
+                width: 38px;
+                height: 38px;
+            }
+
+            .messages {
+                padding-top: 12px;
+                gap: 8px;
+            }
+
+            .unit-gate-options {
+                gap: 6px;
+            }
+
+            .unit-chip {
+                padding: 6px 11px;
+                font-size: 12px;
+            }
+
+            /* Con cuatro campos, la puerta de datos se come la pantalla en
+               un panel bajo y no queda dónde leer lo que dijo Sofia. */
+            .email-gate {
+                gap: 4px;
+            }
+
+            .input-wrap input {
+                padding: 7px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-app">
+        <!-- HEADER -->
+        <header class="chat-header">
+            <div class="agent">
+                <div class="avatar">
+                    <img src="{% url 'app_pages:widget_avatar' %}" alt="" class="avatar-img">
+                    <span class="status-dot"></span>
+                </div>
+                <div class="agent-meta">
+                    <div class="agent-name">{{ chat_configuration.name|default:"Sofía" }}</div>
+                    <div class="agent-sub">
+                        <span class="pulse"></span>
+                        Asistente comercial · {{ chat_configuration.enterprise_name|default:"Estrasol" }}
+                    </div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn-reset" id="resetBtn" aria-label="Reiniciar chat"
+                        title="Reiniciar chat">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="1 4 1 10 7 10"></polyline>
+                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                    </svg>
+                </button>
+                <button class="btn-close" id="closeBtn" aria-label="Cerrar chat" title="Cerrar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 6 6 18M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- BARRA DE PASOS -->
+        <nav class="steps" aria-label="Progreso">
+            <ol class="steps-list">
+                <li class="step" id="step1"><span class="step-num">1</span><span>Tu interes</span></li>
+                <li class="step" id="step2"><span class="step-num">2</span><span>Tus datos</span></li>
+                <li class="step" id="step3"><span class="step-num">3</span><span>Te contactamos</span></li>
+            </ol>
+        </nav>
+
+        <!-- CUERPO -->
+        <div class="chat-body">
+            <div class="messages" id="messages"></div>
+        </div>
+
+        <!-- FOOTER -->
+        <footer class="chat-footer">
+            <!-- Paso 1: unidad de negocio. Sin elegirla el chat no avanza. -->
+            <div class="unit-gate" id="unitGate" hidden>
+                <span class="email-gate-label">Elige una unidad de negocio</span>
+                <div class="unit-gate-options" id="unitOptions"></div>
+            </div>
+
+            <!-- Brief (paso 2 de la barra, antes de los datos): que cuente con
+                 sus palabras que busca. Se contesta una sola vez y no pasa por
+                 la IA: se guarda y viaja al agente en cada POST, igual que la
+                 unidad y el tema. -->
+            <form class="email-gate" id="briefGate" hidden>
+                <label class="email-gate-label" for="userBrief">Lo que buscas</label>
+                <div class="email-gate-row brief-row">
+                    <div class="input-wrap is-multiline">
+                        <textarea id="userBrief" rows="3" maxlength="1000"
+                                  placeholder="Escríbelo con tus palabras"
+                                  aria-label="Qué estás buscando"></textarea>
+                    </div>
+                    <button type="submit" class="btn-send" id="briefBtn" aria-label="Enviar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M5 12h14M12 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="email-gate-error" id="briefError" hidden>Cuéntanos qué buscas para continuar.</div>
+            </form>
+
+            <!-- Paso 3: datos de contacto. La empresa sirve para calificar el
+                 lead antes de que lo tome un vendedor. El teléfono va opcional a
+                 propósito: exigirlo espanta a quien todavía solo está explorando. -->
+            <form class="email-gate" id="infoGate" hidden>
+                <label class="email-gate-label" for="userName">Tu nombre</label>
+                <div class="input-wrap">
+                    <input type="text" id="userName" placeholder="Nombre y apellido" maxlength="150"
+                           required autocomplete="name" aria-label="Nombre">
+                </div>
+                <label class="email-gate-label" for="userCompany">Tu empresa</label>
+                <div class="input-wrap">
+                    <input type="text" id="userCompany" placeholder="Nombre de la empresa" maxlength="100"
+                           required autocomplete="organization" aria-label="Empresa">
+                </div>
+                <label class="email-gate-label" for="userEmail">Tu correo electrónico</label>
+                <div class="email-gate-row">
+                    <div class="input-wrap">
+                        <input type="email" id="userEmail" placeholder="nombre@correo.com" maxlength="200"
+                               required autocomplete="email" aria-label="Correo electronico">
+                    </div>
+                    <button type="submit" class="btn-send" id="emailBtn" aria-label="Enviar mis datos">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M5 12h14M12 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="email-gate-error" id="emailError" hidden>Escribe un correo valido para continuar.</div>
+            </form>
+
+            <!-- Medio de contacto. Con correo se usa el que ya dio en los
+                 datos; con WhatsApp se pide solo el numero, en la puerta
+                 siguiente. -->
+            <div class="unit-gate" id="channelGate" hidden>
+                <span class="email-gate-label">Elige un medio</span>
+                <div class="unit-gate-options">
+                    <button type="button" class="unit-chip" data-channel="whatsapp">WhatsApp</button>
+                    <button type="button" class="unit-chip" data-channel="correo">Correo</button>
+                </div>
+            </div>
+
+            <!-- Solo si eligio WhatsApp: el numero es lo unico que falta. -->
+            <form class="email-gate" id="phoneGate" hidden>
+                <label class="email-gate-label" for="userPhone">Tu WhatsApp</label>
+                <div class="email-gate-row">
+                    <div class="input-wrap">
+                        <input type="tel" id="userPhone" placeholder="Máx. 20 dígitos" maxlength="20"
+                               inputmode="numeric" autocomplete="tel" aria-label="Número de WhatsApp">
+                    </div>
+                    <button type="submit" class="btn-send" id="phoneBtn" aria-label="Enviar mi número">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M5 12h14M12 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="email-gate-error" id="phoneError" hidden>Escribe tu número de WhatsApp: solo números, de 10 a 20 dígitos.</div>
+            </form>
+
+            <form class="input-bar" id="chatForm" autocomplete="off" hidden>
+                <div class="input-wrap">
+                    <input type="text" id="userInput" placeholder="Escribe tu mensaje…" maxlength="2000" aria-label="Mensaje">
+                </div>
+                <button type="submit" class="btn-send" id="sendBtn" aria-label="Enviar mensaje">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12h14M12 5l7 7-7 7"></path>
+                    </svg>
+                </button>
+            </form>
+            <p class="email-gate-label message-counter" id="messageCounter" aria-live="polite" hidden></p>
+            <div class="message-limit-actions" id="messageLimitNotice" hidden>
+                <button type="button" class="unit-chip" id="restartChatBtn">Reiniciar chat</button>
+            </div>
+        </footer>
+    </div>
+
+    {{ chat_configuration|json_script:"webchat-configuration" }}
+    <script>
+        (function () {
+            var API_URL = '/api/agents/web-chat/';
+            var POLL_URL = '/api/agents/web-chat/messages/';
+            var messageLimit = 9;
+            var messageCounter = document.getElementById('messageCounter');
+            var messageLimitNotice = document.getElementById('messageLimitNotice');
+
+            // Una sola consulta en vuelo; se vuelve a consultar cada 7 s
+            // hasta recibir el turno completo, sin reenviar el mensaje.
+            var POLL_INTERVAL_MS = 7000;
+            var pollTimer = null;
+            var receivedMessages = {};
+            var DEMO = new URLSearchParams(window.location.search).get('demo') === '1';
+            var configurationElement = document.getElementById('webchat-configuration');
+            var chatConfiguration = configurationElement ? JSON.parse(configurationElement.textContent) : null;
+            var agentName = (chatConfiguration && chatConfiguration.name) || 'Sofía';
+            var greetingText = chatConfiguration && chatConfiguration.saludo ? chatConfiguration.saludo : 'Hola, soy ' + agentName + ', asistente virtual de Estrasol.';
+            var greeting = escapeMarkdown(greetingText);
+
+            var chatBody = document.getElementById('messages');
+            var chatForm = document.getElementById('chatForm');
+            var userInput = document.getElementById('userInput');
+            var sendBtn = document.getElementById('sendBtn');
+            var closeBtn = document.getElementById('closeBtn');
+            var resetBtn = document.getElementById('resetBtn');
+            var unitGate = document.getElementById('unitGate');
+            var unitOptions = document.getElementById('unitOptions');
+            var infoGate = document.getElementById('infoGate');
+            var nameInput = document.getElementById('userName');
+            var emailInput = document.getElementById('userEmail');
+            var companyInput = document.getElementById('userCompany');
+            var phoneInput = document.getElementById('userPhone');
+            var emailError = document.getElementById('emailError');
+            var step1 = document.getElementById('step1');
+            var step2 = document.getElementById('step2');
+            var step3 = document.getElementById('step3');
+            var briefGate = document.getElementById('briefGate');
+            var briefInput = document.getElementById('userBrief');
+            var briefError = document.getElementById('briefError');
+            var channelGate = document.getElementById('channelGate');
+            var phoneGate = document.getElementById('phoneGate');
+            var phoneError = document.getElementById('phoneError');
+            var chatFooter = document.querySelector('.chat-footer');
+
+            var embedded = window.self !== window.top;
+            if (embedded) {
+                document.body.classList.add('embedded');
+            } else {
+                document.body.classList.add('standalone');
+            }
+
+            if (typeof marked !== 'undefined') {
+                marked.setOptions({ breaks: true, gfm: true });
+            }
+
+            var WELCOME = greeting;
+
+            // Pregunta general del brief, para una unidad sin pregunta propia en
+            // UNIT_BRIEF_QUESTIONS. La respuesta se guarda tal cual; no se le
+            // contesta con IA.
+            var ASK_BRIEF = "Perfecto. Cuéntame brevemente qué estás buscando.";
+
+            // Abre el bloque de datos: nombre, empresa y correo. El telefono no
+            // va aqui; solo se pide si despues elige WhatsApp.
+            var ASK_NAME_EMAIL = "Perfecto. Para atenderte mejor, ¿me compartes tus datos?";
+
+            // El "{}" es el primer nombre, ya escapado (ver escapeMarkdown).
+            var ASK_CHANNEL = "Gracias, {}. ¿Por qué medio prefieres que te contactemos?";
+
+            var ASK_PHONE = "¿A qué número podemos escribirte?";
+
+            // Medios de contacto: clave guardada -> lo que se pinta en la
+            // burbuja del visitante al elegir.
+            var CHANNELS = { whatsapp: 'WhatsApp', correo: 'Correo' };
+            var CHANNEL_WHATSAPP = 'whatsapp';
+
+            // Lo que espera el backend en ``preferred_contact_method``: el
+            // WhatsApp del widget viaja como 'phone'.
+            var CHANNEL_API = { whatsapp: 'phone', correo: 'email' };
+
+            var SEND_ERROR = "No pude enviar tus datos. Inténtalo de nuevo en un momento.";
+
+            // Cuando la unidad ya se sabe al abrir el chat, este mensaje
+            // reemplaza al saludo Y a la pregunta: uno solo que saluda, nombra
+            // la unidad y pide los datos. Con los dos por separado quedaba un
+            // "perfecto" contestando algo que el visitante nunca dijo.
+            var WELCOME_WITH_UNIT = greeting + ' Veo que te interesa **{}**.';
+
+            // Cuanto se deja ver la burbuja con los datos antes de limpiar el
+            // hilo. Sin esta pausa la burbuja aparece y desaparece en el mismo
+            // cuadro, y no se alcanza a percibir.
+            var THANKS_HELP = "¿Qué buscas específicamente en **{}**?";
+
+            var GREETING_DELAY_MS = 800;
+
+            var SESSION_KEY = 'estrasol_chat_session';
+            var EMAIL_KEY = 'estrasol_chat_email';
+            var NAME_KEY = 'estrasol_chat_name';
+            var UNIT_KEY = 'estrasol_chat_unit';
+            var COMPANY_KEY = 'estrasol_chat_company';
+            var PHONE_KEY = 'estrasol_chat_phone';
+            var BRIEF_KEY = 'estrasol_chat_brief';
+            var CHANNEL_KEY = 'estrasol_chat_channel';
+            var SENT_KEY = 'estrasol_chat_sent';
+            var FINISHED_KEY = 'estrasol_chat_finished';
+            var COUNT_KEY = 'estrasol_chat_message_count';
+
+            // Opciones visibles para este caso de uso del chat web.
+            var BUSINESS_UNITS = [
+                'Branding e Identidad de Marca',
+                'Rediseño de Branding Evolutivo',
+                'Arquitectura de Marca',
+                'Employer Branding y Comunicación',
+                'Desarrollo Web',
+                'Publicidad Digital',
+                'Gestión de Redes Sociales',
+                'Email Marketing',
+                'Gestión de Marketplaces',
+                'AEO/GEO Y SEO',
+                'Consultoría en Marketing',
+                'Auditoría de Marca y Comunicación',
+                'Consultoría de Innovación y Diseño',
+            ];
+
+            // Salida para quien no sabe que area elegir. No es una unidad: por
+            // eso no va en BUSINESS_UNITS, que tambien reconoce el ``data-unit``
+            // de la pagina, y asi solo se llega a ella con un clic. Se guarda
+            // como unidad para que el resto del flujo -brief, datos, medio y
+            // cierre- no cambie.
+            var UNSURE_UNIT = 'No estoy seguro';
+
+            // Lo que pregunta Sofia al abrir el brief, segun la unidad. Las
+            // llaves tienen que ser identicas a las de BUSINESS_UNITS: una
+            // unidad que no aparezca aqui usa la pregunta general, ASK_BRIEF.
+            var UNIT_BRIEF_QUESTIONS = {
+                'Branding e Identidad de Marca': 'Cuéntame brevemente qué marca quieres crear o qué identidad necesitas desarrollar.',
+                'Rediseño de Branding Evolutivo': 'Cuéntame brevemente qué te gustaría evolucionar de la identidad actual de tu marca.',
+                'Arquitectura de Marca': 'Cuéntame brevemente qué marcas, productos o servicios necesitas organizar.',
+                'Employer Branding y Comunicación': 'Cuéntame brevemente qué necesitas comunicar para atraer talento o fortalecer la cultura de tu empresa.',
+                'Desarrollo Web': 'Cuéntame brevemente qué tipo de sitio, tienda o desarrollo tienes en mente.',
+                'Publicidad Digital': 'Cuéntame brevemente qué quieres promocionar y qué resultados buscas.',
+                'Gestión de Redes Sociales': 'Cuéntame brevemente qué redes sociales quieres gestionar y qué objetivos tienes.',
+                'Email Marketing': 'Cuéntame brevemente qué necesitas comunicar por correo y a qué público quieres llegar.',
+                'Gestión de Marketplaces': 'Cuéntame brevemente en qué marketplaces vendes o quieres vender y qué necesitas mejorar.',
+                'AEO/GEO Y SEO': 'Cuéntame brevemente qué sitio o marca quieres posicionar y qué objetivos de visibilidad tienes.',
+                'Consultoría en Marketing': 'Cuéntame brevemente qué reto de marketing quieres resolver.',
+                'Auditoría de Marca y Comunicación': 'Cuéntame brevemente qué aspectos de tu marca o comunicación te gustaría evaluar.',
+                'Consultoría de Innovación y Diseño': 'Cuéntame brevemente qué producto, servicio o experiencia quieres innovar o mejorar.',
+            };
+            UNIT_BRIEF_QUESTIONS[UNSURE_UNIT] = 'No hay problema. Cuéntame brevemente qué necesitas y lo canalizo con el equipo adecuado.';
+
+            // La unidad puede llegar por la URL, desde el ``data-unit`` del
+            // tag del widget. Se acepta la etiqueta completa o cualquiera de
+            // sus tramos separados por "/", sin distinguir mayúsculas: en
+            // WordPress es mucho más cómodo escribir "seo" que
+            // "AEO/GEO Y SEO".
+            //
+            // Un valor que no corresponde a ninguna unidad se descarta y el
+            // chat vuelve a preguntar. Aceptarlo tal cual abriría la
+            // conversación con una unidad inventada, que después viaja al
+            // agente y termina en el CRM.
+            function matchBusinessUnit(value) {
+                var wanted = (value || '').trim().toLowerCase().replace(/_/g, ' ');
+                if (!wanted) return '';
+
+                for (var i = 0; i < BUSINESS_UNITS.length; i++) {
+                    var unit = BUSINESS_UNITS[i];
+                    if (unit.toLowerCase() === wanted) return unit;
+
+                    var parts = unit.toLowerCase().split('/');
+                    for (var j = 0; j < parts.length; j++) {
+                        if (parts[j].trim() === wanted) return unit;
+                    }
+                }
+
+                // Conserva las ligas de desarrollo web y acepta las siglas de posicionamiento.
+                var unitAliases = {
+                    'sitio web/e-commerce': 'Desarrollo Web',
+                    'sitio web': 'Desarrollo Web',
+                    'e-commerce': 'Desarrollo Web',
+                    'ecommerce': 'Desarrollo Web',
+                    'seo': 'AEO/GEO Y SEO',
+                    'geo': 'AEO/GEO Y SEO',
+                };
+                var alias = unitAliases[wanted];
+                if (alias && BUSINESS_UNITS.indexOf(alias) !== -1) return alias;
+                return '';
+            }
+
+            // El widget embebido manda los datos por query string; en una
+            // visita directa a /chat/ se usan los guardados en el navegador.
+            var query = new URLSearchParams(window.location.search);
+            var queryEmail = (query.get('email') || '').trim().toLowerCase();
+            var queryName = (query.get('name') || '').trim();
+            var queryUnit = matchBusinessUnit(query.get('unit'));
+
+            // De donde llego el visitante. Los pone el loader del widget en
+            // el src del iframe, leyendolos de los data-utm-* del tag. En una
+            // visita directa a /chat/ no vienen y se mandan vacios, que es
+            // correcto: no se sabe de donde llego.
+            var UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign',
+                            'utm_content', 'utm_term', 'traffic_origin'];
+
+            var queryUtms = {};
+            UTM_KEYS.forEach(function (clave) {
+                queryUtms[clave] = (query.get(clave) || '').trim().slice(0, 255);
+            });
+
+            // Se conserva la sesión al recargar para recuperar sus mensajes.
+            // Solo el botón de borrar inicia una conversación nueva.
+            var sessionId = readSession();
+            var contactEmail = queryEmail || readStored(EMAIL_KEY);
+            var contactName = queryName || readStored(NAME_KEY);
+            var businessUnit = queryUnit || readStored(UNIT_KEY);
+            // Empresa y teléfono no viajan por la URL: el widget no los sabe,
+            // los escribe el visitante aquí.
+            var contactCompany = readStored(COMPANY_KEY);
+            var contactPhone = readStored(PHONE_KEY);
+            // El brief cuenta lo que buscaba dentro de ESA unidad. Si la pagina
+            // declara otra (``data-unit``), el de la visita anterior se descarta:
+            // no tiene sentido llegar a Kioscos arrastrando un brief de Odoo.
+            // UNIT_KEY todavia guarda la unidad anterior; se actualiza abajo.
+            //
+            // Se borra tambien del almacenamiento: el cambio de unidad solo se
+            // detecta en esta carga, y en la siguiente el brief viejo pasaria
+            // por bueno de la unidad nueva.
+            var contactBrief = readStored(BRIEF_KEY);
+            if (queryUnit && queryUnit !== readStored(UNIT_KEY)) {
+                contactBrief = '';
+                saveStored(BRIEF_KEY, '');
+            }
+            // Un valor que no es de la lista se descarta y se vuelve a preguntar.
+            var contactChannel = CHANNELS[readStored(CHANNEL_KEY)] ? readStored(CHANNEL_KEY) : '';
+            // Si el registro ya llego al backend. Sin esto, quien vio el error
+            // de envio y cerro la pestana volveria a ver el cierre ("ya tengo tu
+            // informacion") sin que sus datos hubieran salido nunca.
+            var leadSent = readStored(SENT_KEY) === '1';
+            var busy = false;
+            var messageCount = Math.max(0, Number(readStored(COUNT_KEY)) || 0);
+            var messageLimitReached = messageCount >= messageLimit;
+
+            if (queryEmail || queryName || queryUnit) {
+                if (queryEmail) saveStored(EMAIL_KEY, contactEmail);
+                if (queryName) saveStored(NAME_KEY, contactName);
+                if (queryUnit) saveStored(UNIT_KEY, businessUnit);
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            }
+
+            // Identifica el turno en curso. Si se borra la conversacion
+            // mientras una peticion sigue en vuelo, el token cambia y la
+            // respuesta que llegue tarde ya no se pinta en el chat nuevo.
+            var turnToken = 0;
+
+            function readStored(key) {
+                try {
+                    return window.localStorage.getItem(key) || '';
+                } catch (e) {
+                    return '';
+                }
+            }
+
+            function saveStored(key, value) {
+                try {
+                    window.localStorage.setItem(key, value);
+                } catch (e) {
+                    // Ventana privada o almacenamiento bloqueado: el dato
+                    // vive solo en esta pestana. El chat funciona igual, solo
+                    // se vuelve a pedir al recargar.
+                }
+            }
+
+            function isValidEmail(value) {
+                return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
+            }
+
+            // El teléfono es opcional, pero si lo dejan tiene que servir para
+            // marcarle. Mismo formato que ya acepta el backend en el formulario
+            // del sitio, para que un lead del chat y uno del formulario no
+            // lleguen al CRM con criterios distintos.
+            function isValidPhone(value) {
+                return /^\d{10,20}$/.test(value.replace(/[\s\-\(\)]/g, ''));
+            }
+
+            // Refleja en la barra de pasos la pantalla que esta a la vista.
+            // Se deriva del estado de las puertas en vez de llevar un contador
+            // aparte: asi no hay dos fuentes de verdad que se desincronicen.
+            function updateSteps() {
+                var actual = 1;
+
+                // El cierre oculta el footer: no queda nada que contestar.
+                if (chatFooter.hidden || !chatForm.hidden) {
+                    actual = 3;
+                } else if (!briefGate.hidden || !infoGate.hidden || !channelGate.hidden || !phoneGate.hidden) {
+                    actual = 2;
+                }
+
+                [step1, step2, step3].forEach(function (paso, indice) {
+                    var numero = indice + 1;
+
+                    paso.classList.toggle('is-active', numero === actual);
+                    paso.classList.toggle('is-done', numero < actual);
+
+                    if (numero === actual) {
+                        paso.setAttribute('aria-current', 'step');
+                    } else {
+                        paso.removeAttribute('aria-current');
+                    }
+                });
+            }
+
+            // Habilita el chat: al cargar si ya estaban los datos guardados, o
+            // al completar el formulario.
+            function openChat() {
+                hideAllGates();
+                chatFooter.hidden = false;
+                messageCounter.hidden = false;
+                setBusy(busy);
+                updateSteps();
+                if (!busy && !messageLimitReached) userInput.focus();
+            }
+
+            // Pide que cuente con sus palabras que busca. Se contesta una sola
+            // vez: si ya lo dijo, se pasa directo a los datos.
+            function showBriefGate() {
+                if (contactBrief) {
+                    showInfoGate();
+                    return;
+                }
+
+                appendMessage('assistant', UNIT_BRIEF_QUESTIONS[businessUnit] || ASK_BRIEF);
+
+                unitGate.hidden = true;
+                infoGate.hidden = true;
+                briefGate.hidden = false;
+                updateSteps();
+
+                briefError.hidden = true;
+                briefInput.value = '';
+                briefInput.focus();
+            }
+
+            // Pide nombre, empresa y correo en un solo bloque.
+            function showInfoGate() {
+                appendMessage('assistant', ASK_NAME_EMAIL);
+
+                unitGate.hidden = true;
+                briefGate.hidden = true;
+                infoGate.hidden = false;
+                updateSteps();
+
+                nameInput.value = contactName;
+                emailInput.value = contactEmail;
+                companyInput.value = contactCompany;
+
+                focusCurrentStep();
+            }
+
+            // Para meter texto del visitante en un mensaje de Sofia. Esas
+            // burbujas pasan por Markdown y terminan en innerHTML, y marked no
+            // limpia HTML: sin esto, un nombre como "<img onerror=...>" -que
+            // tambien puede llegar por ?name= en la URL- se ejecutaria. Con la
+            // barra invertida delante, marked pinta la puntuacion como texto.
+            function escapeMarkdown(str) {
+                return String(str).replace(/[!-\/:-@\[-`{-~]/g, '\\$&');
+            }
+
+            // "Gracias, Enrique" se lee natural; con el nombre completo suena
+            // a formulario.
+            function firstName(fullName) {
+                return (fullName || '').trim().split(/\s+/)[0] || '';
+            }
+
+            // Los pasos nuevos parten de aqui en vez de ocultar una por una
+            // las puertas que podrian seguir abiertas.
+            function hideAllGates() {
+                unitGate.hidden = true;
+                briefGate.hidden = true;
+                infoGate.hidden = true;
+                channelGate.hidden = true;
+                phoneGate.hidden = true;
+                chatForm.hidden = true;
+            }
+
+            function showChannelGate() {
+                var nombre = escapeMarkdown(firstName(contactName));
+                // Funcion y no cadena: un "$" en el nombre no se interpreta.
+                appendMessage('assistant', ASK_CHANNEL.replace('{}', function () { return nombre; }));
+
+                hideAllGates();
+                channelGate.hidden = false;
+                updateSteps();
+
+                focusCurrentStep();
+            }
+
+            function selectChannel(channel) {
+                contactChannel = channel;
+                saveStored(CHANNEL_KEY, channel);
+                appendMessage('user', CHANNELS[channel]);
+
+                // Con correo ya esta todo: se usa el que dio en los datos. Con
+                // WhatsApp falta justo el numero, y es lo unico que se pide.
+                if (channel === CHANNEL_WHATSAPP) {
+                    showPhoneGate();
+                } else {
+                    finishFlow(channelGate);
+                }
+            }
+
+            function showPhoneGate() {
+                appendMessage('assistant', ASK_PHONE);
+
+                hideAllGates();
+                phoneGate.hidden = false;
+                updateSteps();
+
+                phoneError.hidden = true;
+                phoneInput.value = contactPhone;
+                phoneInput.focus();
+            }
+
+            // Manda el registro al backend. El brief viaja como ``message``, que
+            // es el campo que exige el serializer. El telefono solo va si eligio
+            // WhatsApp: con correo no se manda y el contacto se queda con el
+            // correo que ya dio.
+            function submitLead(message) {
+                if (messageLimitReached || messageCount >= messageLimit) {
+                    return Promise.resolve({ message_count: messageCount,
+                        message_limit: messageLimit, message_limit_reached: true });
+                }
+                var payload = {
+                    message: message || contactBrief,
+                    session_id: sessionId,
+                    name: contactName,
+                    company_name: contactCompany,
+                    email: contactEmail,
+                    business_unit: businessUnit,
+                    preferred_contact_method: CHANNEL_API[contactChannel]
+                };
+
+                // Los cinco UTM viajan siempre, vacios si no hay dato.
+                UTM_KEYS.forEach(function (clave) {
+                    payload[clave] = queryUtms[clave];
+                });
+
+                if (contactChannel === CHANNEL_WHATSAPP) {
+                    payload.phone = contactPhone;
+                }
+
+                return fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }).then(function (res) {
+                    // El backend contesta 202 tanto si lo encolo como si ya habia
+                    // uno en curso para esta sesion: en los dos casos va en camino.
+                    return res.json().then(function (data) {
+                        if (!res.ok && data.code !== 'message_limit_reached') {
+                            throw new Error('HTTP ' + res.status);
+                        }
+                        return data;
+                    });
+                });
+            }
+
+            // El registro inicial se conserva; su brief es el primer turno.
+            // Al aceptarlo, se abre el chat y se espera la respuesta de Sofía.
+            function finishFlow(retryGate) {
+                var token = turnToken;
+
+                hideAllGates();
+                setBusy(true);
+                showTyping();
+
+                var envio = DEMO
+                    ? new Promise(function (resolve) {
+                        setTimeout(function () { resolve({ reply: demoReply(contactBrief),
+                            message_count: messageCount + 1 }); }, 600);
+                    })
+                    : submitLead();
+
+                envio.then(function (data) {
+                    // Borro la conversacion mientras se enviaba: ya no aplica.
+                    if (token !== turnToken) return;
+                    leadSent = true;
+                    saveStored(SENT_KEY, '1');
+
+                    if (embedded && !DEMO) {
+                        window.parent.postMessage(
+                            { type: 'sofia-lead-generado', leadId: sessionId },
+                            '*'
+                        );
+                    }
+
+                    openChat();
+                    applyMessageLimit(data);
+                    if (data.reply) {
+                        finishTurn(data.reply, token);
+                    } else if (messageLimitReached && data.status !== 'accepted' && data.status !== 'processing') {
+                        finishTurn(null, token);
+                    } else {
+                        schedulePoll(data.session_id || sessionId, data.after_id || 0, token);
+                    }
+                }, function () {
+                    if (token !== turnToken) return;
+                    hideTyping();
+                    setBusy(false);
+                    appendMessage('assistant', SEND_ERROR);
+                    retryGate.hidden = false;
+                    updateSteps();
+                    focusCurrentStep();
+                });
+            }
+
+            // Todo contestado pero sin enviar: el POST fallo en una visita
+            // anterior. Se reintenta solo, sin volver a preguntar nada.
+            function resendLead() {
+                finishFlow(contactChannel === CHANNEL_WHATSAPP ? phoneGate : channelGate);
+            }
+
+            // Lo primero que falta, o null si ya contesto todo. Sirve al volver
+            // a abrir el chat a medio registro: nada de lo que ya contesto se
+            // le vuelve a preguntar.
+            function pendingStep() {
+                if (!contactBrief) return showBriefGate;
+                if (!contactName || !contactEmail || !contactCompany) return showInfoGate;
+                if (!contactChannel) return showChannelGate;
+                if (contactChannel === CHANNEL_WHATSAPP && !contactPhone) return showPhoneGate;
+                if (!leadSent) return resendLead;
+                return null;
+            }
+
+            function buildUnitMenu() {
+                BUSINESS_UNITS.forEach(function (unit) {
+                    var chip = document.createElement('button');
+                    chip.type = 'button';
+                    chip.className = 'unit-chip';
+                    chip.textContent = unit;
+                    chip.addEventListener('click', function () { selectUnit(unit); });
+                    unitOptions.appendChild(chip);
+                });
+
+                // Al final y con estilo secundario: es una salida, no una
+                // unidad mas.
+                var unsure = document.createElement('button');
+                unsure.type = 'button';
+                unsure.className = 'unit-chip is-secondary';
+                unsure.textContent = UNSURE_UNIT;
+                unsure.addEventListener('click', function () { selectUnit(UNSURE_UNIT); });
+                unitOptions.appendChild(unsure);
+            }
+
+            function selectUnit(unit) {
+                businessUnit = unit;
+                contactBrief = '';
+                saveStored(BRIEF_KEY, '');
+                saveStored(UNIT_KEY, unit);
+                appendMessage('user', unit);
+                unitGate.hidden = true;
+                showBriefGate();
+            }
+
+            function readSession() {
+                var key = SESSION_KEY;
+                try {
+                    var existing = window.localStorage.getItem(key);
+                    if (existing) return existing;
+                    var fresh = 'sess_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+                    window.localStorage.setItem(key, fresh);
+                    return fresh;
+                } catch (e) {
+                    return 'sess_' + Math.random().toString(36).slice(2, 12);
+                }
+            }
+
+            function renderMarkdown(text) {
+                if (typeof marked !== 'undefined') {
+                    try { return marked.parse(text); } catch (e) { /* fallback */ }
+                }
+                return escapeHtml(text).replace(/\n/g, '<br>');
+            }
+
+            function escapeHtml(str) {
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function timeNow() {
+                return new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+            }
+
+            function appendMessage(role, content, createdAt) {
+                var isBot = role === 'assistant';
+                var wrap = document.createElement('div');
+                wrap.className = 'msg ' + (isBot ? 'bot' : 'user');
+
+                var bubble = document.createElement('div');
+                bubble.className = 'bubble';
+                if (isBot) {
+                    bubble.innerHTML = renderMarkdown(content);
+                } else {
+                    bubble.textContent = content;
+                }
+
+                var meta = document.createElement('div');
+                meta.className = 'msg-meta';
+                var time = createdAt
+                    ? new Date(createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+                    : timeNow();
+                meta.textContent = (isBot ? agentName : 'Tú') + ' · ' + time;
+
+                var col = document.createElement('div');
+                col.style.maxWidth = '85%';
+                col.style.display = 'flex';
+                col.style.flexDirection = 'column';
+                col.style.alignItems = isBot ? 'flex-start' : 'flex-end';
+                col.appendChild(bubble);
+                col.appendChild(meta);
+
+                wrap.appendChild(col);
+                chatBody.appendChild(wrap);
+                scrollToBottom();
+                return wrap;
+            }
+
+            function showTyping() {
+                hideTyping();
+                var wrap = document.createElement('div');
+                wrap.className = 'msg bot';
+                wrap.id = 'typing-indicator';
+                var bubble = document.createElement('div');
+                bubble.className = 'bubble';
+                bubble.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+                wrap.appendChild(bubble);
+                chatBody.appendChild(wrap);
+                scrollToBottom();
+            }
+
+            function hideTyping() {
+                var el = document.getElementById('typing-indicator');
+                if (el) el.remove();
+            }
+
+            // Se difiere al siguiente cuadro a proposito. Casi siempre se llama
+            // justo antes de cambiar de formulario, y medir en ese momento da
+            // un footer a medio cambio: el anterior ya oculto y el siguiente
+            // aun sin mostrar. La zona de mensajes se ve mas alta de lo que va
+            // a quedar y el scroll se detiene antes del final. En el cuadro
+            // siguiente el layout ya es el definitivo. Varias llamadas seguidas
+            // se juntan en una sola.
+            var scrollPending = false;
+
+            function scrollToBottom() {
+                if (scrollPending) return;
+                scrollPending = true;
+
+                requestAnimationFrame(function () {
+                    scrollPending = false;
+                    chatBody.scrollTo({ top: chatBody.scrollHeight, behavior: 'smooth' });
+                });
+            }
+
+            // Lo que no pasa por scrollToBottom: la zona de mensajes se encoge
+            // sin que llegue un mensaje nuevo, como al abrir el teclado en
+            // movil. El scrollTop se queda donde estaba y el ultimo mensaje
+            // queda debajo de la vista. Encogerse siempre viene de un gesto del
+            // visitante (toco un campo, envio), y en ese momento lo que quiere
+            // ver es lo ultimo: se baja al final.
+            //
+            // 'instant' le gana al scroll-behavior: smooth del CSS. Con el
+            // suave, el navegador pintaria primero el mensaje tapado y luego
+            // lo deslizaria; el observer corre antes de pintar y el salto no
+            // se alcanza a ver.
+            if (typeof ResizeObserver !== 'undefined') {
+                var lastMessagesHeight = chatBody.clientHeight;
+
+                new ResizeObserver(function () {
+                    var height = chatBody.clientHeight;
+
+                    if (height < lastMessagesHeight) {
+                        chatBody.scrollTo({ top: chatBody.scrollHeight, behavior: 'instant' });
+                    }
+
+                    lastMessagesHeight = height;
+                }).observe(chatBody);
+            }
+
+            function applyMessageLimit(data) {
+                if (typeof data.message_limit === 'number' && data.message_limit > 0) {
+                    messageLimit = data.message_limit;
+                }
+                if (typeof data.message_count === 'number' && data.message_count >= 0) {
+                    messageCount = data.message_count;
+                    saveStored(COUNT_KEY, String(messageCount));
+                    messageLimitReached = messageCount >= messageLimit;
+                }
+                if (data.message_limit_reached) messageLimitReached = true;
+                setBusy(busy);
+            }
+
+            function setBusy(value) {
+                busy = value;
+                // El cupo ya se agotó, pero el aviso espera la respuesta final.
+                var showLimitNotice = messageLimitReached && !busy;
+                sendBtn.disabled = value || messageLimitReached;
+                userInput.disabled = value || messageLimitReached;
+                chatForm.classList.toggle('busy', value);
+                chatForm.hidden = showLimitNotice || !leadSent;
+                messageLimitNotice.hidden = !showLimitNotice;
+                messageCounter.textContent = showLimitNotice
+                    ? 'Has alcanzado el límite de mensajes permitidos.'
+                    : 'Mensajes enviados: ' + messageCount + '/' + messageLimit;
+                userInput.placeholder = showLimitNotice
+                    ? 'Reinicia el chat para continuar'
+                    : (value ? agentName + ' está escribiendo…' : 'Escribe tu mensaje…');
+            }
+
+            // Unico punto de cierre del turno: pinta la respuesta, libera el
+            // input y devuelve el foco. Todo camino de ``respondWith`` y de
+            // ``pollForReply`` tiene que terminar aqui; el que no pase por
+            // aqui deja el chat trabado para siempre.
+            function finishTurn(reply, token) {
+                // La conversacion se borro mientras esperabamos: esta
+                // respuesta pertenece a un chat que ya no existe.
+                if (token !== turnToken) return;
+
+                hideTyping();
+                clearTimeout(pollTimer);
+                if (reply) appendMessage('assistant', reply);
+                setBusy(false);
+                // El estado comercial del CRM no bloquea nuevos mensajes.
+                // El visitante puede seguir escribiendo en este mismo hilo.
+                openChat();
+            }
+
+            function renderUpdates(data, restore) {
+                (data.messages || []).forEach(function (message) {
+                    if (receivedMessages[message.id]) return;
+                    receivedMessages[message.id] = true;
+                    // El envío ya pintó la burbuja del visitante. Al recargar
+                    // sí se reconstruyen ambos lados con el historial guardado.
+                    if (restore || message.role === 'assistant') {
+                        appendMessage(message.role, message.content, message.created_at);
+                    }
+                });
+                applyMessageLimit(data);
+            }
+
+            function schedulePoll(sid, afterId, token, restore) {
+                clearTimeout(pollTimer);
+                pollTimer = setTimeout(function () {
+                    pollForReply(sid, afterId, token, restore);
+                }, POLL_INTERVAL_MS);
+            }
+
+            function resumeConversation() {
+                var token = turnToken;
+                if (!DEMO) setBusy(true);
+                openChat();
+                if (DEMO) return;
+                showTyping();
+                fetch(POLL_URL + '?session_id=' + encodeURIComponent(sessionId), { cache: 'no-store' })
+                    .then(function (res) {
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        return res.json();
+                    })
+                    .then(function (data) {
+                        if (token !== turnToken) return;
+                        renderUpdates(data, true);
+                        if (data.status === 'processing') {
+                            showTyping();
+                            schedulePoll(sessionId, data.last_id || 0, token, true);
+                        } else if (data.status === 'failed') {
+                            finishTurn(SEND_ERROR, token);
+                        } else {
+                            finishTurn(null, token);
+                        }
+                    })
+                    .catch(function () {
+                        if (token !== turnToken) return;
+                        // Recuperar el historial tampoco reenvía el registro.
+                        clearTimeout(pollTimer);
+                        pollTimer = setTimeout(resumeConversation, POLL_INTERVAL_MS);
+                    });
+            }
+
+            // ---------- DEMO ----------
+            function demoReply(text) {
+                var t = text.toLowerCase();
+                if (t.indexOf('kiosco') !== -1) {
+                    return "¡Excelente elección! Para cotizarte los kioscos digitales, cuéntame:\n\n- ¿Cuántos kioscos tienen contemplados en su proyecto?\n- ¿Saben ya qué componentes necesitan?\n- ¿En qué tiempo estiman tomar la decisión de compra?\n- ¿Cuentan con un presupuesto asignado?";
+                }
+                if (t.indexOf('odoo') !== -1) {
+                    return "Con gusto te ayudamos con Odoo; somos Partner Certificado. Para orientarte bien, cuéntame:\n\n- ¿Hoy cómo resuelven su operación (Excel, otro sistema)?\n- ¿A qué se dedica la empresa y cuántas personas son?\n- ¿Hay alguna fecha o situación que los tenga apurados?";
+                }
+                if (t.indexOf('web') !== -1 || t.indexOf('página') !== -1 || t.indexOf('marketing') !== -1) {
+                    return "Perfecto. Para canalizarte con el especialista de desarrollo web y marketing digital, cuéntame un poco de tu proyecto: ¿qué necesitas (sitio nuevo, rediseño, e-commerce) y para cuándo lo buscas?";
+                }
+                if (t.indexOf('ai') !== -1 || t.indexOf('inteligencia') !== -1 || t.indexOf('nextwave') !== -1) {
+                    return "NextWave AI es nuestra unidad de inteligencia artificial: agentes, automatización y soluciones a la medida. ¿Qué tipo de proceso te gustaría automatizar o mejorar en tu empresa?";
+                }
+                return "¡Gracias por tu interés! Para atenderte mejor, ¿me cuentas qué servicio de Estrasol necesitas (Odoo, kioscos digitales, desarrollo web o NextWave AI) y cuál es tu cargo en la empresa?";
+            }
+
+            function respondWith(message, token) {
+                showTyping();
+                var delay = 900 + Math.random() * 800;
+
+                if (DEMO) {
+                    // Respuestas de utileria: solo con ?demo=1 en la URL.
+                    setTimeout(function () {
+                        if (token !== turnToken) return;
+                        applyMessageLimit({ message_count: messageCount + 1 });
+                        finishTurn(demoReply(message), token);
+                    }, delay);
+                    return;
+                }
+
+                // Usa el mismo payload validado del registro inicial:
+                // conserva contacto, preferencia y atribución en cada turno.
+                submitLead(message)
+                .then(function (data) {
+                    if (token !== turnToken) return;
+                    applyMessageLimit(data);
+                    if (data && data.reply) {
+                        finishTurn(data.reply, token);
+                    } else if (messageLimitReached && data.status !== 'accepted' && data.status !== 'processing') {
+                        finishTurn(null, token);
+                    } else if (data && data.session_id) {
+                        // Sigue ocupado a proposito: cierra el poll.
+                        // ``after_id`` es el ultimo mensaje que ya existia
+                        // cuando el POST entro. Sin el, el poll devuelve la
+                        // respuesta del turno anterior mientras el agente aun
+                        // no escribe la nueva, y Sofia parece repetirse.
+                        schedulePoll(data.session_id, data.after_id || 0, token);
+                    } else {
+                        throw new Error('sin respuesta');
+                    }
+                })
+                .catch(function (err) {
+                    console.error('[webchat] fallo el POST a ' + API_URL, err);
+                    finishTurn('No pude conectar con el servidor. Inténtalo de nuevo en un momento.', token);
+                });
+            }
+
+            function pollForReply(sid, afterId, token, restore) {
+                if (token !== turnToken) return;
+
+                var url = POLL_URL +
+                    '?session_id=' + encodeURIComponent(sid) +
+                    '&after_id=' + encodeURIComponent(afterId);
+
+                fetch(url, { cache: 'no-store' })
+                    .then(function (res) {
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        return res.json();
+                    })
+                    .then(function (data) {
+                        if (token !== turnToken) return;
+                        renderUpdates(data, restore);
+                        if (data.status === 'processing') {
+                            schedulePoll(sid, data.last_id || afterId, token, restore);
+                        } else if (data.status === 'failed') {
+                            finishTurn(SEND_ERROR, token);
+                        } else if (messageLimitReached || data.status === 'ready') {
+                            finishTurn(null, token);
+                        } else if (data.status === 'idle') {
+                            finishTurn('No pude recuperar la respuesta. Inténtalo de nuevo en un momento.', token);
+                        } else {
+                            schedulePoll(sid, data.last_id || afterId, token, restore);
+                        }
+                    })
+                    .catch(function () {
+                        if (token !== turnToken) return;
+                        schedulePoll(sid, afterId, token, restore);
+                    });
+            }
+
+            // ---------- EVENTOS ----------
+            chatForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                sendMessage(userInput.value);
+            });
+
+            function sendMessage(raw) {
+                var text = (raw || '').trim();
+                if (messageLimitReached || messageCount >= messageLimit) {
+                    messageLimitReached = true;
+                    openChat();
+                    return;
+                }
+                // Sin correo no se envia nada: el backend lo exige.
+                if (!text || busy || !contactEmail) return;
+                appendMessage('user', text);
+                userInput.value = '';
+                // ``respondWith`` es asincrono, asi que el desbloqueo no puede
+                // ir aqui abajo: lo hace ``finishTurn`` cuando llega la
+                // respuesta, falla la peticion o se agota el poll.
+                setBusy(true);
+                respondWith(text, turnToken);
+            }
+
+            // Borra lo que el chat guarda EN ESTE NAVEGADOR: el session_id, el
+            // correo y los mensajes en pantalla. No toca nada del servidor: la
+            // conversacion y su historial siguen guardados en Estrasol.
+            function forgetLocalData() {
+                // Invalida el turno en vuelo, si hay uno: su respuesta ya no
+                // debe aparecer en la conversacion nueva.
+                turnToken += 1;
+                clearTimeout(pollTimer);
+                receivedMessages = {};
+
+                try {
+                    window.localStorage.removeItem(SESSION_KEY);
+                    window.localStorage.removeItem(EMAIL_KEY);
+                    window.localStorage.removeItem(NAME_KEY);
+                    window.localStorage.removeItem(UNIT_KEY);
+                    window.localStorage.removeItem(COMPANY_KEY);
+                    window.localStorage.removeItem(PHONE_KEY);
+                    window.localStorage.removeItem(BRIEF_KEY);
+                    window.localStorage.removeItem(CHANNEL_KEY);
+                    window.localStorage.removeItem(SENT_KEY);
+                    window.localStorage.removeItem(FINISHED_KEY);
+                    window.localStorage.removeItem(COUNT_KEY);
+                } catch (e) {
+                    // Almacenamiento bloqueado: no habia nada que borrar.
+                }
+
+                sessionId = readSession();   // genera y guarda uno nuevo
+                contactEmail = '';
+                contactName = '';
+                contactCompany = '';
+                contactPhone = '';
+                contactBrief = '';
+                contactChannel = '';
+                leadSent = false;
+                businessUnit = '';
+                messageCount = 0;
+                messageLimitReached = false;
+
+                setBusy(false);
+                chatBody.innerHTML = '';
+                nameInput.value = '';
+                emailInput.value = '';
+                companyInput.value = '';
+                phoneInput.value = '';
+                emailError.hidden = true;
+                briefInput.value = '';
+                briefError.hidden = true;
+                phoneError.hidden = true;
+
+                chatForm.hidden = true;
+                messageCounter.hidden = true;
+                infoGate.hidden = true;
+                briefGate.hidden = true;
+                channelGate.hidden = true;
+                phoneGate.hidden = true;
+                unitGate.hidden = false;
+                chatFooter.hidden = false;
+                updateSteps();
+
+                appendMessage('assistant', WELCOME);
+                var firstChip = unitOptions.querySelector('.unit-chip');
+                if (firstChip) firstChip.focus();
+            }
+
+            resetBtn.addEventListener('click', forgetLocalData);
+            document.getElementById('restartChatBtn').addEventListener('click', forgetLocalData);
+
+            briefGate.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                var briefValue = (briefInput.value || '').trim();
+
+                if (!briefValue) {
+                    briefError.hidden = false;
+                    briefInput.focus();
+                    return;
+                }
+
+                briefError.hidden = true;
+                contactBrief = briefValue;
+                saveStored(BRIEF_KEY, briefValue);
+
+                // Se pinta como mensaje del usuario para que el hilo se lea
+                // natural, pero NO se manda al backend ni recibe respuesta de
+                // la IA: viaja despues, en el campo ``brief`` de cada POST.
+                appendMessage('user', briefValue);
+
+                briefGate.hidden = true;
+                showInfoGate();
+            });
+
+            // Enter envia y Shift+Enter hace salto de linea: el mismo gesto
+            // que el campo de mensaje, sin perder la opcion de escribir en
+            // renglones.
+            briefInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+                    e.preventDefault();
+                    briefGate.requestSubmit();
+                }
+            });
+
+            infoGate.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                var nameValue = (nameInput.value || '').trim();
+                var companyValue = (companyInput.value || '').trim();
+                var emailValue = (emailInput.value || '').trim().toLowerCase();
+
+                // En el mismo orden que los campos, para que el error lleve al
+                // primero que falta.
+                if (nameValue.length < 2) {
+                    emailError.textContent = 'Escribe tu nombre para continuar.';
+                    emailError.hidden = false;
+                    nameInput.focus();
+                    return;
+                }
+
+                if (companyValue.length < 2) {
+                    emailError.textContent = 'Escribe el nombre de tu empresa para continuar.';
+                    emailError.hidden = false;
+                    companyInput.focus();
+                    return;
+                }
+
+                if (!isValidEmail(emailValue)) {
+                    emailError.textContent = 'Escribe un correo valido para continuar.';
+                    emailError.hidden = false;
+                    emailInput.focus();
+                    return;
+                }
+
+                emailError.hidden = true;
+                contactName = nameValue;
+                contactCompany = companyValue;
+                contactEmail = emailValue;
+                saveStored(NAME_KEY, nameValue);
+                saveStored(COMPANY_KEY, companyValue);
+                saveStored(EMAIL_KEY, emailValue);
+
+                // Se pintan como mensaje del usuario para que el hilo se lea
+                // natural. ``appendMessage`` solo toca el DOM: nada de esto
+                // sale del navegador.
+                appendMessage('user', [contactName, contactCompany, contactEmail].join(' · '));
+
+                showChannelGate();
+            });
+
+            phoneGate.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                var phoneValue = (phoneInput.value || '').trim();
+
+                // Aqui no es opcional: eligio WhatsApp y el numero es lo unico
+                // que se le pide.
+                if (!isValidPhone(phoneValue)) {
+                    phoneError.hidden = false;
+                    phoneInput.focus();
+                    return;
+                }
+
+                phoneError.hidden = true;
+                contactPhone = phoneValue;
+                saveStored(PHONE_KEY, phoneValue);
+                appendMessage('user', phoneValue);
+
+                finishFlow(phoneGate);
+            });
+
+            closeBtn.addEventListener('click', function () {
+                if (embedded) {
+                    window.parent.postMessage({ type: 'estrasol-chat-close' }, '*');
+                }
+            });
+
+            // Al reabrir el widget se enfoca el paso que esté a la vista.
+            // Antes siempre iba al campo de mensaje, que durante las
+            // preguntas iniciales sigue oculto, y el foco no llegaba a nada.
+            function focusCurrentStep() {
+                if (!unitGate.hidden) {
+                    var chip = unitOptions.querySelector('.unit-chip');
+                    if (chip) chip.focus();
+                } else if (!briefGate.hidden) {
+                    briefInput.focus();
+                } else if (!infoGate.hidden) {
+                    var pendiente = [nameInput, companyInput, emailInput].filter(function (input) {
+                        return !input.value.trim();
+                    })[0];
+                    (pendiente || nameInput).focus();
+                } else if (!channelGate.hidden) {
+                    var medio = channelGate.querySelector('.unit-chip');
+                    if (medio) medio.focus();
+                } else if (!phoneGate.hidden) {
+                    phoneInput.focus();
+                } else if (!chatForm.hidden) {
+                    userInput.focus();
+                }
+            }
+
+            window.addEventListener('message', function (e) {
+                var data = e.data;
+                if (data && data.type === 'estrasol-chat-focus') {
+                    focusCurrentStep();
+                }
+            });
+
+            // Inicio
+            buildUnitMenu();
+
+            channelGate.querySelectorAll('[data-channel]').forEach(function (chip) {
+                chip.addEventListener('click', function () {
+                    selectChannel(chip.getAttribute('data-channel'));
+                });
+            });
+
+            var siguiente = businessUnit ? pendingStep() : null;
+
+            if (businessUnit && !siguiente) {
+                // Recupera el hilo sin repetir el formulario ni reenviar el brief.
+                resumeConversation();
+            } else if (businessUnit) {
+                // La unidad viene de la página (``data-unit``) o de una visita
+                // anterior; en ninguno de los dos casos la dijo aquí el
+                // visitante, así que el chat la nombra él mismo. "No estoy
+                // seguro" no se puede nombrar así ("Veo que te interesa No estoy
+                // seguro"): ahí se retoma directo en el paso pendiente.
+                if (businessUnit !== UNSURE_UNIT) {
+                    appendMessage('assistant', WELCOME_WITH_UNIT.replace('{}', escapeMarkdown(businessUnit)));
+                }
+                siguiente();
+            } else {
+                appendMessage('assistant', WELCOME);
+                unitGate.hidden = false;
+                updateSteps();
+                var firstChip = unitOptions.querySelector('.unit-chip');
+                if (firstChip) firstChip.focus();
+            }
+        })();
+    </script>
+</body>
+</html>

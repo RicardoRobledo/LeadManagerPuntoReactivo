@@ -1,0 +1,257 @@
+{% extends 'prospects/base_dashboard.html' %}
+
+{% block title %}Automatizaciones | Lead Manager{% endblock %}
+
+{% block content %}
+<div class="w-full min-h-screen panel-background p-3 md:p-4">
+  <div class="w-full space-y-8">
+
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <div class="bg-indigo-100 p-3 rounded-xl border border-indigo-200 shadow-sm">
+          <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-2xl font-bold text-gray-900 tracking-tight">Seguimiento de automatizaciones</h2>
+          <p class="text-sm text-gray-500">Supervisa paso a paso las ejecuciones de los agentes.</p>
+        </div>
+      </div>
+      <div class="hidden sm:block">
+        <span class="px-3 py-1 bg-white border border-gray-200 rounded-full text-xs font-medium text-gray-500 shadow-sm">
+          Ejecuciones de agentes
+        </span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-6">
+      <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+        <p class="text-gray-500 text-sm font-medium">Total de ejecuciones</p>
+        <p class="text-3xl font-extrabold text-gray-900 mt-1">{{ total_runs }}</p>
+      </div>
+
+      <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden">
+        <div class="absolute right-0 top-0 h-full w-1 bg-blue-500"></div>
+        <p class="text-gray-500 text-sm font-medium">En curso</p>
+        <p class="text-3xl font-extrabold text-blue-600 mt-1">{{ running_count }}</p>
+      </div>
+
+      <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden">
+        <div class="absolute right-0 top-0 h-full w-1 bg-green-500"></div>
+        <p class="text-gray-500 text-sm font-medium">Completadas</p>
+        <p class="text-3xl font-extrabold text-green-600 mt-1">{{ success_count }}</p>
+      </div>
+
+      <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden">
+        <div class="absolute right-0 top-0 h-full w-1 bg-red-500"></div>
+        <p class="text-gray-500 text-sm font-medium">Con errores</p>
+        <p class="text-3xl font-extrabold text-red-600 mt-1">{{ failed_count }}</p>
+      </div>
+    </div>
+
+    {% if messages %}
+      <div class="fixed top-6 right-6 z-50 space-y-3 max-w-sm w-full">
+        {% for message in messages %}
+          <div class="flex items-start gap-3 bg-white border border-gray-100 rounded-2xl shadow-lg p-4">
+            <div class="flex-shrink-0">
+              {% if message.tags == "warning" %}
+                <span class="text-amber-500">⚠️</span>
+              {% elif message.tags == "success" %}
+                <span class="text-emerald-500">✓</span>
+              {% else %}
+                <span class="text-blue-500">ℹ️</span>
+              {% endif %}
+            </div>
+            <div class="flex-1 text-sm text-gray-700 leading-snug">{{ message }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+
+      <div class="p-5 border-b border-gray-100 bg-gray-50/50">
+        <form method="get" class="flex flex-col lg:flex-row gap-4 justify-between">
+          <div class="flex flex-1 flex-col sm:flex-row gap-3">
+            <div class="relative flex-1 group">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              </div>
+              <input type="text" name="search" value="{{ search }}" placeholder="Buscar por ID de ejecución o sesión…" class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all shadow-sm">
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-3">
+            <select name="agent_name" class="block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-xl shadow-sm bg-white cursor-pointer hover:bg-gray-50 transition">
+              <option value="">Todos los agentes</option>
+              {% for option in agent_options %}
+                <option value="{{ option.agent_name }}" {% if agent_name == option.agent_name %}selected{% endif %}>{{ option.agent_display_name }}</option>
+              {% endfor %}
+            </select>
+
+            <select name="status" class="block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-xl shadow-sm bg-white cursor-pointer hover:bg-gray-50 transition">
+              <option value="all" {% if status == 'all' %}selected{% endif %}>Todos los estados</option>
+              <option value="queued" {% if status == 'queued' %}selected{% endif %}>En cola</option>
+              <option value="running" {% if status == 'running' %}selected{% endif %}>En curso</option>
+              <option value="success" {% if status == 'success' %}selected{% endif %}>Completada</option>
+              <option value="failed" {% if status == 'failed' %}selected{% endif %}>Con errores</option>
+            </select>
+
+            <input type="text" name="source" value="{% if source == 'web' %}chatweb{% elif source == 'email' %}Correo{% elif source == 'form' %}Formulario{% else %}{{ source }}{% endif %}" placeholder="Canal…" class="block w-full pl-3 pr-3 py-2.5 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all shadow-sm">
+
+            <button type="submit" class="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all transform hover:-translate-y-0.5">
+              Filtrar
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Ejecución</th>
+              <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Agente</th>
+              <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Canal</th>
+              <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Conversación</th>
+              <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
+              <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Pasos</th>
+              <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Inicio</th>
+              <th scope="col" class="relative px-6 py-4">
+                <span class="sr-only">Acciones</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            {% for run in page_obj %}
+            <tr class="hover:bg-gray-50 transition-colors duration-150 group">
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                #{{ run.id }}
+              </td>
+
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center gap-3">
+                  {% if run.agent_has_avatar %}
+                    <img src="{% url 'app_prospects:agent_avatar_file' run.agent_name %}" alt="" width="40" height="40" loading="lazy" class="h-10 w-10 shrink-0 rounded-full bg-slate-100 object-cover ring-1 ring-slate-200">
+                  {% else %}
+                    <span aria-hidden="true" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-sm font-semibold text-indigo-600 ring-1 ring-indigo-100">{{ run.agent_display_name|default:"?"|first|upper }}</span>
+                  {% endif %}
+                  <div>
+                    <div class="text-sm font-medium text-gray-900">{{ run.agent_display_name|default:"—" }}</div>
+                    <div class="mt-0.5 text-xs font-medium {% if run.mode == 'shadow_testing' %}text-slate-500{% else %}text-violet-600{% endif %}">{% if run.mode == 'shadow_testing' %}Pruebas{% else %}Atención real{% endif %}</div>
+                    {% if run.agent_category %}
+                      <div class="mt-0.5 text-xs text-gray-500">{{ run.agent_category }}</div>
+                    {% endif %}
+                  </div>
+                </div>
+              </td>
+
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {% if run.source == 'web' %}chatweb{% elif run.source == 'email' %}Correo{% elif run.source == 'form' %}Formulario{% else %}{{ run.source|default:"—" }}{% endif %}
+              </td>
+
+              <td class="px-6 py-4 whitespace-nowrap">
+                {% if run.conversation %}
+                  <a href="{% url 'app_prospects:conversations' %}" class="text-sm text-indigo-600 hover:text-indigo-900">
+                    {{ run.conversation.session_id|default:"—" }}
+                  </a>
+                {% else %}
+                  <span class="text-sm text-gray-400">—</span>
+                {% endif %}
+              </td>
+
+              <td class="px-6 py-4 whitespace-nowrap">
+                {% if run.status == 'success' %}
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 ring-1 ring-green-600/20">
+                    <span class="mr-1.5 h-2 w-2 bg-green-500 rounded-full"></span>
+                    Completada
+                  </span>
+                {% elif run.status == 'failed' %}
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 ring-1 ring-red-600/20">
+                    <span class="mr-1.5 h-2 w-2 bg-red-500 rounded-full"></span>
+                    Con errores
+                  </span>
+                {% elif run.status == 'queued' %}
+                  <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">En cola</span>
+                {% else %}
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-blue-600/20">
+                    <span class="mr-1.5 h-2 w-2 bg-blue-500 rounded-full animate-pulse"></span>
+                    En curso
+                  </span>
+                {% endif %}
+              </td>
+
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">{{ run.step_count|default:0 }}</div>
+                {% if run.failed_step_count %}
+                  <div class="text-xs text-red-500">{{ run.failed_step_count }} con errores</div>
+                {% endif %}
+              </td>
+
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {{ run.started_at|date:"d M Y H:i" }}
+              </td>
+
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <a href="{% url 'app_automations:run_detail' run.id %}" class="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-lg transition-colors">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                  Ver detalle
+                </a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="8" class="px-6 py-10 text-center text-gray-500 bg-gray-50/50">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                <p class="mt-2 text-sm font-medium text-gray-900">No se encontraron ejecuciones de agentes</p>
+                <p class="mt-1 text-sm text-gray-500">Prueba con otros filtros de búsqueda.</p>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6 flex items-center justify-between">
+        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+          <div>
+            <p class="text-sm text-gray-700">
+              Mostrando <span class="font-medium">{{ page_obj.start_index }}</span> a <span class="font-medium">{{ page_obj.end_index }}</span> de <span class="font-medium">{{ page_obj.paginator.count }}</span> resultados
+            </p>
+          </div>
+
+          <div>
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Paginación">
+              <a href="{% querystring page=1 %}" class="{% if page_obj.number == 1 %}pointer-events-none opacity-50 bg-gray-50{% else %}bg-white hover:bg-gray-50{% endif %} relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 text-sm font-medium text-gray-500">
+                <span class="sr-only">Primera</span>
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>
+              </a>
+
+              <a href="{% if page_obj.has_previous %}{% querystring page=page_obj.previous_page_number %}{% else %}#{% endif %}" class="{% if not page_obj.has_previous %}pointer-events-none opacity-50 bg-gray-50{% else %}bg-white hover:bg-gray-50{% endif %} relative inline-flex items-center px-2 py-2 border border-gray-300 text-sm font-medium text-gray-500">
+                <span class="sr-only">Anterior</span>
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+              </a>
+
+              <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-indigo-50 text-sm font-bold text-indigo-600 z-10">
+                {{ page_obj.number }}
+              </span>
+
+              <a href="{% if page_obj.has_next %}{% querystring page=page_obj.next_page_number %}{% else %}#{% endif %}" class="{% if not page_obj.has_next %}pointer-events-none opacity-50 bg-gray-50{% else %}bg-white hover:bg-gray-50{% endif %} relative inline-flex items-center px-2 py-2 border border-gray-300 text-sm font-medium text-gray-500">
+                <span class="sr-only">Siguiente</span>
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+              </a>
+
+              <a href="{% querystring page=page_obj.paginator.num_pages %}" class="{% if page_obj.number == page_obj.paginator.num_pages %}pointer-events-none opacity-50 bg-gray-50{% else %}bg-white hover:bg-gray-50{% endif %} relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 text-sm font-medium text-gray-500">
+                <span class="sr-only">Última</span>
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+              </a>
+            </nav>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

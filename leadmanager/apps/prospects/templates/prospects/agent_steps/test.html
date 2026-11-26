@@ -1,0 +1,72 @@
+<style>
+  #agentTest [data-state-tone="positive"] { color: #047857; }
+  #agentTest [data-state-tone="warning"] { color: #b45309; }
+  #agentTest [data-state-tone="negative"] { color: #be123c; }
+  #agentTest [data-state-tone="neutral"] { color: #94a3b8; }
+  .agent-mode-toggle[aria-checked="true"] > span { transform: translateX(1.5rem); }
+</style>
+<div id="agentTest" data-test-url="{% url 'app_automations:agent_preview' agent.key %}" class="space-y-5">
+  <input type="hidden" name="mode" data-prompt-field="mode" value="{{ agent.mode }}">
+  {% if agent.category == 'Prospección' and not agent.get_shadow_mode_block_reason %}
+  <section class="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-5" aria-labelledby="agent-mode-heading">
+    <div class="flex items-center gap-3">
+      <button id="agentModeToggle" type="button" role="switch" {% if agent.get_shadow_mode_block_reason %}disabled{% endif %} data-mode-block-reason="{{ agent.get_shadow_mode_block_reason }}" aria-checked="{% if agent.mode == 'shadow_testing' %}true{% else %}false{% endif %}" aria-labelledby="agent-mode-heading" aria-describedby="agentModeDescription" class="agent-mode-toggle relative flex h-7 w-12 shrink-0 items-center rounded-full bg-slate-300 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 aria-checked:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-50">
+        <span aria-hidden="true" class="h-5 w-5 translate-x-1 rounded-full bg-white shadow-sm transition-transform"></span>
+      </button>
+      <div><h2 id="agent-mode-heading" class="text-sm font-semibold text-slate-900">Pruebas con conversaciones reales</h2><p id="agentModeLabel" class="mt-0.5 text-xs font-medium text-indigo-700">{% if agent.mode == 'shadow_testing' %}Está en pruebas{% else %}No está en pruebas{% endif %}</p></div>
+    </div>
+    <p id="agentModeDescription" class="mt-3 text-sm leading-relaxed text-slate-600">{% if agent.get_shadow_mode_block_reason %}{{ agent.get_shadow_mode_block_reason }}{% else %}Recibe una copia de los mensajes de sus canales y genera respuestas internas sin interrumpir la atención a los clientes.{% endif %}</p>
+    <p id="error_mode" data-prompt-error="mode" hidden class="mt-2 text-sm text-red-700"></p>
+  </section>
+  {% endif %}
+  <div>
+    <h2 class="text-lg font-semibold text-slate-900">Prueba</h2>
+    <p class="mt-1 text-sm text-slate-500">Prueba la configuración guardada del agente en una conversación simulada. Guarda tus cambios antes de probarlos.</p>
+  </div>
+  <section aria-labelledby="agentTestCasesHeading">
+    <h3 id="agentTestCasesHeading" class="mb-2 text-sm font-semibold text-slate-800">Prueba casos que llegan todos los días</h3>
+    <div class="flex flex-wrap gap-2">
+      {% for case in test_cases %}
+      <button type="button" data-agent-test-case="{{ case.key }}" aria-pressed="false" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-emerald-500 hover:text-emerald-800 aria-pressed:border-emerald-700 aria-pressed:bg-emerald-50 aria-pressed:text-emerald-800">{{ case.label }}</button>
+      {% endfor %}
+    </div>
+  </section>
+  <div class="mx-auto grid w-full max-w-6xl grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(150px,1fr)_minmax(0,30rem)_minmax(180px,1fr)]">
+    <aside aria-label="Interés detectado" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Interés</p>
+      <p id="agentTestInterestValue" data-state-tone="neutral" class="mt-2 text-xl font-semibold">Pendiente</p>
+      <p id="agentTestInterestDetail" class="mt-1 text-sm text-slate-500">Aún no hay respuesta del agente.</p>
+    </aside>
+    <div class="min-w-0 space-y-4">
+      <section aria-label="Conversación de prueba" class="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
+        <div id="agentTestMessages" role="log" aria-live="polite" aria-relevant="additions" class="max-h-96 min-h-48 space-y-4 overflow-y-auto pr-1">
+          <p id="agentTestEmpty" class="py-10 text-center text-sm text-slate-500">Elige un caso o escribe un mensaje para iniciar la prueba.</p>
+        </div>
+      </section>
+      <div>
+        <label for="agentTestInput" class="mb-2 block text-sm font-semibold text-slate-800">Responde como prospecto</label>
+        <textarea id="agentTestInput" rows="3" maxlength="2000" placeholder="Escribe para probar la conversación..." class="block w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm text-slate-800 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100"></textarea>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <button id="agentTestSend" type="button" class="rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50">Probar respuesta ↗</button>
+          <button id="agentTestExample" type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">Usar ejemplo</button>
+          <button id="agentTestSilence" type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">Simular silencio</button>
+          <button id="agentTestReset" type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">Reiniciar prueba</button>
+        </div>
+        <p id="agentTestStatus" role="status" class="mt-3 text-xs text-amber-800">Esta prueba no crea prospectos, no envía mensajes a clientes ni realiza asignaciones.</p>
+      </div>
+    </div>
+    <aside class="space-y-3" aria-label="Estado del prospecto">
+      <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Escalado</p>
+        <p id="agentTestEscalationValue" data-state-tone="neutral" class="mt-2 text-xl font-semibold">Pendiente</p>
+        <p id="agentTestEscalationDetail" class="mt-1 text-sm text-slate-500">El agente aún no ha evaluado el caso.</p>
+      </article>
+      <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Semáforo</p>
+        <p id="agentTestTrafficValue" data-state-tone="neutral" class="mt-2 text-xl font-semibold">Pendiente</p>
+        <p class="mt-1 text-sm text-slate-500">Clasificación comercial del agente.</p>
+      </article>
+    </aside>
+  </div>
+  {{ test_cases|json_script:'agent-test-cases' }}
+</div>

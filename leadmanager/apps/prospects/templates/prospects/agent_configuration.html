@@ -1,0 +1,330 @@
+{% extends 'prospects/base_dashboard.html' %}
+{% load static %}
+
+{% block title %}Configuraciones de {{ agent.name }} | Lead Manager{% endblock %}
+
+{% block extra_head %}
+<style>
+  #agentPromptEditor textarea { resize: vertical; }
+  #agentPromptEditor .agent-step-button[aria-current="step"] {
+    border-color: #6366f1;
+    background: #eef2ff;
+    color: #4338ca;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen panel-background p-4 sm:p-6 lg:p-8">
+  <div class="w-full">
+    <a href="{% url 'app_prospects:agents' %}" class="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-indigo-700 hover:text-indigo-900">← Agentes</a>
+    <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h1 id="agentPromptTitle" class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Configuraciones · {{ agent.name }}</h1>
+        <p id="agentPromptDescription" class="mt-2 text-sm text-slate-500">Personaliza la comunicación, el flujo, las ventas, el escalamiento y las unidades de negocio del agente.</p>
+      </div>
+    </header>
+    {% for message in messages %}<p role="status" class="mb-4 rounded-xl border {% if message.tags == 'error' %}border-red-200 bg-red-50 text-red-700{% else %}border-emerald-200 bg-emerald-50 text-emerald-700{% endif %} p-4 text-sm">{{ message }}</p>{% endfor %}
+    <section class="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" aria-labelledby="agent-image-title">
+      <h2 id="agent-image-title" class="text-lg font-bold text-slate-900">Imagen del agente</h2>
+      <p class="mt-1 text-sm text-slate-500">Agrega una imagen para identificar al agente en el panel.</p>
+      <div class="mt-5 flex flex-col items-start gap-5 sm:flex-row sm:items-center">
+        <div class="h-20 w-20 shrink-0 overflow-hidden rounded-full bg-indigo-100 ring-4 ring-indigo-50">
+          <img id="agent-avatar-preview" {% if agent.avatar_url %}src="{{ agent.avatar_url }}"{% else %}hidden{% endif %} alt="Vista previa de la imagen del agente" class="h-full w-full object-cover">
+          <span id="agent-avatar-initial" {% if agent.avatar_url %}hidden{% endif %} class="flex h-full items-center justify-center text-2xl font-bold text-indigo-600">{{ agent.name|first }}</span>
+        </div>
+        <div class="flex-1">
+          <form method="post" enctype="multipart/form-data" action="{% url 'app_prospects:agent_avatar' agent.key %}" class="flex flex-wrap items-end gap-3">{% csrf_token %}
+            <input type="hidden" name="action" value="upload">
+            <div><label for="agent-avatar-input" class="block text-sm font-semibold text-slate-700">Seleccionar imagen</label><input id="agent-avatar-input" name="avatar" type="file" accept="image/png,image/jpeg,image/webp" required class="mt-2 block max-w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100"><p class="mt-1 text-xs text-slate-500">PNG, JPG o WebP · máximo 2 MB</p></div>
+            <button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">Guardar imagen</button>
+          </form>
+          {% if agent.avatar %}<form method="post" action="{% url 'app_prospects:agent_avatar' agent.key %}" class="mt-3">{% csrf_token %}<input type="hidden" name="action" value="remove"><button type="submit" class="text-sm font-semibold text-red-600 hover:text-red-800">Quitar imagen</button></form>{% endif %}
+        </div>
+      </div>
+    </section>
+    <script>
+      (() => {
+        const input = document.getElementById('agent-avatar-input');
+        const preview = document.getElementById('agent-avatar-preview');
+        const initial = document.getElementById('agent-avatar-initial');
+        const originalSrc = preview.getAttribute('src');
+        let temporaryUrl;
+        input.addEventListener('change', () => {
+          if (temporaryUrl) URL.revokeObjectURL(temporaryUrl);
+          if (!input.files.length) { if (originalSrc) preview.src = originalSrc; else preview.removeAttribute('src'); preview.hidden = !originalSrc; initial.hidden = !!originalSrc; return; }
+          temporaryUrl = URL.createObjectURL(input.files[0]);
+          preview.src = temporaryUrl;
+          preview.hidden = false;
+          initial.hidden = true;
+        });
+      })();
+    </script>
+    <section id="agentPromptEditor" data-prompt-url="{% url 'app_automations:agent_prompts' agent.key %}" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" aria-labelledby="agentPromptTitle">
+      <nav aria-label="Secciones de configuración" class="mx-5 mb-6 mt-5 grid grid-cols-2 gap-2 border-b border-slate-200 pb-3 sm:mx-7 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
+        {% for step in configuration_steps %}
+        <button id="promptStepButton-{{ step.key }}" type="button" data-prompt-step="{{ step.key }}" aria-controls="promptStepPanel-{{ step.key }}" aria-current="{% if forloop.first and not show_annotations %}step{% else %}false{% endif %}" class="agent-step-button min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-2.5 text-center text-sm font-semibold leading-tight text-slate-600 hover:border-indigo-300 hover:text-indigo-700 sm:px-3">{{ step.label }}</button>
+        {% endfor %}
+        <button id="promptStepButton-annotations" type="button" data-prompt-step="annotations" aria-controls="anotaciones" aria-current="{% if show_annotations %}step{% else %}false{% endif %}" class="agent-step-button min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-2.5 text-center text-sm font-semibold leading-tight text-slate-600 hover:border-indigo-300 hover:text-indigo-700 sm:px-3">Anotaciones</button>
+      </nav>
+      <form id="agentPromptForm" method="post" novalidate {% if show_annotations %}hidden{% endif %}>
+        {% csrf_token %}
+        <div class="px-5 pb-5 sm:px-7">
+          <p id="agentPromptLoading" role="status" class="mb-4 text-sm text-slate-500">Cargando configuración…</p>
+          <p id="agentPromptError" role="alert" hidden class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"></p>
+          <fieldset id="agentPromptFields" disabled>
+            {% for step in configuration_steps %}
+            <section id="promptStepPanel-{{ step.key }}" data-prompt-panel="{{ step.key }}" aria-labelledby="promptStepButton-{{ step.key }}" class="min-h-72" {% if not forloop.first or show_annotations %}hidden{% endif %}>
+              {% include step.template %}
+            </section>
+            {% endfor %}
+          </fieldset>
+        </div>
+        <footer class="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:px-7">
+          <a href="{% url 'app_prospects:agents' %}" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100">Volver a agentes</a>
+          <button id="agentPromptSave" type="submit" disabled class="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50">Guardar cambios</button>
+        </footer>
+      </form>
+      <section id="anotaciones" data-prompt-panel="annotations" tabindex="-1" class="min-h-72 scroll-mt-6 px-5 pb-5 outline-none focus:outline-none sm:px-7" aria-labelledby="promptStepButton-annotations" {% if not show_annotations %}hidden{% endif %}>
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <p class="text-sm font-medium text-slate-600">{{ active_annotation_count }} de {{ max_active_annotations }} activas</p>
+          {% if annotation_can_summarize %}
+          <button type="button" data-annotation-condense aria-haspopup="dialog" aria-controls="agentAnnotationCondenseDialog" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Resumir anotaciones</button>
+          {% endif %}
+        </div>
+        {% if annotation_can_summarize %}
+        <p class="mb-4 text-sm leading-relaxed text-slate-600">Se recomienda resumir las anotaciones activas en una sola para reducir el consumo de tokens y evitar repeticiones.</p>
+        {% endif %}
+        {% if annotation_capacity_reached %}
+        <p role="status" class="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900">Se alcanzó el límite de {{ max_active_annotations }} anotaciones activas. Resume las activas en una para liberar espacio y activar otras.</p>
+        {% endif %}
+        <nav aria-label="Filtrar anotaciones por estado" class="mb-4 flex flex-wrap gap-2">
+          <a href="?annotation_page=1#anotaciones" {% if not annotation_status %}aria-current="true"{% endif %} class="rounded-lg border px-3 py-2 text-sm font-semibold {% if not annotation_status %}border-indigo-200 bg-indigo-50 text-indigo-700{% else %}border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">Todas</a>
+          <a href="?annotation_page=1&amp;annotation_status=active#anotaciones" {% if annotation_status %}aria-current="true"{% endif %} class="rounded-lg border px-3 py-2 text-sm font-semibold {% if annotation_status %}border-indigo-200 bg-indigo-50 text-indigo-700{% else %}border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">Solo activas</a>
+        </nav>
+        {% if annotation_page %}
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+          <table class="w-full text-left text-sm" aria-label="Anotaciones del agente">
+            <thead class="bg-slate-50 text-slate-600">
+              <tr>
+                <th scope="col" class="px-3 py-3 font-semibold sm:px-5">ID</th>
+                <th scope="col" class="px-3 py-3 font-semibold sm:px-5">Creada</th>
+                <th scope="col" class="px-3 py-3 font-semibold sm:px-5">Actualizada</th>
+                <th scope="col" class="px-3 py-3 font-semibold sm:px-5">Estado</th>
+                <th scope="col" class="px-3 py-3 sm:px-5"><span class="sr-only">Acción</span></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200 border-t border-slate-200">
+              {% for annotation in annotation_page %}
+              <tr data-annotation-row class="cursor-pointer hover:bg-indigo-50 focus-within:bg-indigo-50">
+                <td class="px-3 py-3 font-mono text-xs text-slate-600 sm:px-5">{{ annotation.pk|stringformat:'s'|slice:':8' }}…</td>
+                <td class="whitespace-nowrap px-3 py-3 font-medium text-slate-800 sm:px-5"><time datetime="{{ annotation.created_at|date:'c' }}">{{ annotation.created_at|date:'d/m/Y g:i A' }}</time></td>
+                <td class="whitespace-nowrap px-3 py-3 text-slate-600 sm:px-5"><time datetime="{{ annotation.updated_at|date:'c' }}">{{ annotation.updated_at|date:'d/m/Y g:i A' }}</time></td>
+                <td class="px-3 py-3 sm:px-5">
+                  {% if annotation.is_active %}
+                  <span class="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800">Activa</span>
+                  {% else %}
+                  <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">Desactivada</span>
+                  {% endif %}
+                </td>
+                <td class="px-3 py-3 text-right sm:px-5">
+                  <button type="button" aria-haspopup="dialog" aria-label="Ver detalle de la anotación del {{ annotation.created_at|date:'d/m/Y g:i A' }}" class="rounded-lg px-2 py-1 font-semibold text-indigo-700 hover:bg-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600">Ver detalle</button>
+                  <template>
+                    <div class="space-y-5">
+                      <!-- Resumen: estado, agente y fechas -->
+                      <dl class="grid grid-cols-1 gap-x-4 gap-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-sm sm:grid-cols-2">
+                        <div>
+                          <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Estado</dt>
+                          <dd class="mt-1.5">
+                            {% if annotation.is_active %}
+                            <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true"></span>Activa</span>
+                            {% else %}
+                            <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200"><span class="h-1.5 w-1.5 rounded-full bg-slate-400" aria-hidden="true"></span>Desactivada</span>
+                            {% endif %}
+                          </dd>
+                        </div>
+                        <div class="min-w-0">
+                          <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Agente destinatario</dt>
+                          <dd class="mt-1.5 break-words font-medium text-slate-800">{{ agent.name }}</dd>
+                        </div>
+                        <div>
+                          <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Creada</dt>
+                          <dd class="mt-1 font-medium text-slate-800"><time datetime="{{ annotation.created_at|date:'c' }}">{{ annotation.created_at|date:'d/m/Y g:i A' }}</time></dd>
+                        </div>
+                        <div>
+                          <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Actualizada</dt>
+                          <dd class="mt-1 font-medium text-slate-800"><time datetime="{{ annotation.updated_at|date:'c' }}">{{ annotation.updated_at|date:'d/m/Y g:i A' }}</time></dd>
+                        </div>
+                      </dl>
+
+                      <!-- Observaciones: solo lectura -->
+                      <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                          <svg class="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                          Observaciones
+                        </h3>
+                        <p class="mt-2 whitespace-pre-line break-words text-sm leading-7 text-slate-700">{{ annotation.observation|default:'Sin observaciones registradas.' }}</p>
+                      </section>
+
+                      <!-- Sugerencias: se pueden editar -->
+                      <section class="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4 shadow-sm">
+                        <div class="flex items-center justify-between gap-3">
+                          <h3 class="flex items-center gap-2 text-sm font-semibold text-indigo-950">
+                            <svg class="h-4 w-4 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3Z"/></svg>
+                            Sugerencias
+                          </h3>
+                          <button type="button" data-annotation-edit aria-expanded="false" class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600">
+                            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m16.9 3.6 3.5 3.5L8.5 19H5v-3.5L16.9 3.6Z"/></svg>
+                            Editar
+                          </button>
+                        </div>
+                        <p data-annotation-view class="mt-2 whitespace-pre-line break-words text-sm leading-7 text-slate-700">{{ annotation.suggestion }}</p>
+                        <form data-annotation-edit-form method="post" action="{% url 'app_prospects:agent_annotation_update' agent.key annotation.pk %}" class="mt-3 space-y-3" hidden>
+                          {% csrf_token %}
+                          <input type="hidden" name="annotation_page" value="{{ annotation_page.number }}">
+                          {% if annotation_status %}<input type="hidden" name="annotation_status" value="{{ annotation_status }}">{% endif %}
+                          <label for="annotation-suggestion-{{ annotation.pk }}" class="sr-only">Sugerencias</label>
+                          <textarea id="annotation-suggestion-{{ annotation.pk }}" name="suggestion" rows="7" maxlength="4000" required data-annotation-textarea class="block w-full resize-y rounded-xl border border-indigo-200 bg-white p-3 text-sm leading-6 text-slate-800 shadow-inner focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">{{ annotation.suggestion }}</textarea>
+                          <div class="flex flex-wrap items-center justify-between gap-3">
+                            <span data-annotation-counter class="text-xs text-slate-500" aria-live="polite"></span>
+                            <div class="flex gap-2">
+                              <button type="button" data-annotation-cancel-edit class="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600">Cancelar</button>
+                              <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Guardar sugerencias</button>
+                            </div>
+                          </div>
+                        </form>
+                      </section>
+
+                      <!-- Acciones -->
+                      {% if annotation_capacity_reached and not annotation.is_active %}
+                      <div id="annotation-capacity-{{ annotation.pk }}" class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900">
+                        <p>Para activar esta anotación, resume primero las {{ active_annotation_count }} anotaciones activas en una.</p>
+                        <button type="button" data-annotation-condense aria-haspopup="dialog" aria-controls="agentAnnotationCondenseDialog" class="mt-3 rounded-lg border border-amber-300 bg-white px-3 py-2 font-semibold text-amber-900 hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-700">Resumir anotaciones</button>
+                      </div>
+                      {% endif %}
+                      <div data-annotation-actions class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
+                        <button type="button" data-annotation-delete aria-expanded="false" class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600">
+                          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+                          Eliminar
+                        </button>
+                        <form method="post" action="{% url 'app_prospects:agent_annotation_status' agent.key annotation.pk %}">
+                          {% csrf_token %}
+                          <input type="hidden" name="is_active" value="{% if annotation.is_active %}0{% else %}1{% endif %}">
+                          <input type="hidden" name="annotation_page" value="{{ annotation_page.number }}">
+                          {% if annotation_status %}<input type="hidden" name="annotation_status" value="{{ annotation_status }}">{% endif %}
+                          <button type="submit" {% if annotation_capacity_reached and not annotation.is_active %}disabled aria-describedby="annotation-capacity-{{ annotation.pk }}"{% endif %} class="rounded-xl px-4 py-2 text-sm font-semibold shadow-sm disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 {% if annotation.is_active %}border border-slate-200 bg-white text-slate-700 hover:bg-slate-50{% else %}bg-emerald-600 text-white hover:bg-emerald-700{% endif %}">{% if annotation.is_active %}Desactivar{% else %}Activar{% endif %}</button>
+                        </form>
+                      </div>
+
+                      <!-- Confirmación de borrado -->
+                      <div data-annotation-delete-confirm role="alertdialog" aria-label="Confirmar eliminación" class="rounded-2xl border border-red-200 bg-red-50 p-4" hidden>
+                        <p class="text-sm font-semibold text-red-800">¿Eliminar esta anotación?</p>
+                        <p class="mt-1 text-sm text-red-700">Se borra definitivamente, junto con sus observaciones y sugerencias. No se puede deshacer.</p>
+                        <form method="post" action="{% url 'app_prospects:agent_annotation_delete' agent.key annotation.pk %}" class="mt-3 flex flex-wrap justify-end gap-2">
+                          {% csrf_token %}
+                          <input type="hidden" name="annotation_page" value="{{ annotation_page.number }}">
+                          {% if annotation_status %}<input type="hidden" name="annotation_status" value="{{ annotation_status }}">{% endif %}
+                          <button type="button" data-annotation-cancel-delete class="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600">Cancelar</button>
+                          <button type="submit" data-annotation-confirm-delete class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600">Sí, eliminar</button>
+                        </form>
+                      </div>
+                    </div>
+                  </template>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500">{% if annotation_status %}Este agente no tiene anotaciones activas.{% else %}Este agente aún no tiene anotaciones.{% endif %}</p>
+        {% endif %}
+        {% if annotation_page.has_other_pages %}
+        <nav class="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm" aria-label="Paginación de anotaciones">
+          {% if annotation_page.has_previous %}<a class="font-semibold text-indigo-700 hover:text-indigo-900" href="{% querystring annotation_page=annotation_page.previous_page_number annotation_status=annotation_status %}#anotaciones">Anterior</a>{% else %}<span></span>{% endif %}
+          <span class="text-slate-500">Página {{ annotation_page.number }} de {{ annotation_page.paginator.num_pages }}</span>
+          {% if annotation_page.has_next %}<a class="font-semibold text-indigo-700 hover:text-indigo-900" href="{% querystring annotation_page=annotation_page.next_page_number annotation_status=annotation_status %}#anotaciones">Siguiente</a>{% else %}<span></span>{% endif %}
+        </nav>
+        {% endif %}
+        <dialog id="agentAnnotationDialog" aria-labelledby="agentAnnotationTitle" class="m-auto max-h-[90vh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-slate-950/60">
+          <header class="sticky top-0 flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-4 sm:px-6">
+            <h2 id="agentAnnotationTitle" class="text-lg font-semibold">Detalle de anotación</h2>
+            <form method="dialog">
+              <button type="submit" autofocus class="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600">Cerrar</button>
+            </form>
+          </header>
+          <div data-annotation-detail class="p-5 sm:p-6"></div>
+        </dialog>
+        {% if annotation_can_summarize %}
+        <dialog id="agentAnnotationCondenseDialog" aria-labelledby="agentAnnotationCondenseTitle" aria-describedby="agentAnnotationCondenseDescription" class="m-auto max-h-[90vh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 text-slate-900 shadow-2xl backdrop:bg-slate-950/60 sm:p-6">
+          <h2 id="agentAnnotationCondenseTitle" class="text-lg font-semibold">Resumir anotaciones activas</h2>
+          <p id="agentAnnotationCondenseDescription" class="mt-3 text-sm leading-relaxed text-slate-600">Las {{ active_annotation_count }} anotaciones activas se resumirán en una nueva anotación activa con lo más importante. Las originales se eliminarán cuando se guarde el resumen.</p>
+          <form id="agentAnnotationCondenseForm" method="post" action="{% url 'app_prospects:agent_annotations_condense' agent.key %}" class="mt-5">
+            {% csrf_token %}
+            <input type="hidden" name="annotation_page" value="{{ annotation_page.number }}">
+            {% if annotation_status %}<input type="hidden" name="annotation_status" value="{{ annotation_status }}">{% endif %}
+            <p id="agentAnnotationCondenseStatus" role="status" hidden class="mb-4 text-sm text-indigo-700">Resumiendo las anotaciones y guardando el resultado…</p>
+            <div class="flex flex-wrap justify-end gap-3">
+              <button type="button" id="agentAnnotationCondenseCancel" autofocus class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-wait disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600">Cancelar</button>
+              <button type="submit" id="agentAnnotationCondenseSubmit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-wait disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Resumir y reemplazar</button>
+            </div>
+          </form>
+        </dialog>
+        {% endif %}
+      </section>
+    </section>
+  </div>
+</div>
+<dialog id="agentModeDialog" aria-labelledby="agent-mode-dialog-title" aria-describedby="agent-mode-dialog-description" class="m-auto max-h-[90vh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-3xl border border-indigo-100 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-slate-950/60">
+  <div class="p-6 sm:p-8">
+    <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600" aria-hidden="true"><svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3h6m-5 0v7l-6 8a2 2 0 0 0 1.6 3h12.8a2 2 0 0 0 1.6-3l-6-8V3M8 15h8"/></svg></div>
+    <h2 id="agent-mode-dialog-title" class="mt-5 text-xl font-bold tracking-tight">Compara antes de ponerlo a atender</h2>
+    <p id="agent-mode-dialog-description" class="mt-3 text-sm leading-relaxed text-slate-600">Este agente recibirá una copia de los mensajes que atiende producción en los canales que tengas seleccionados.</p>
+    <ul class="mt-5 space-y-3 text-sm text-slate-600">
+      <li class="flex gap-3"><span aria-hidden="true" class="font-bold text-indigo-600">✓</span>El agente de producción seguirá atendiendo a los clientes.</li>
+      <li class="flex gap-3"><span aria-hidden="true" class="font-bold text-indigo-600">✓</span>Las respuestas de prueba serán solo para revisión interna; no se enviarán a los clientes.</li>
+      <li class="flex gap-3"><span aria-hidden="true" class="font-bold text-indigo-600">✓</span>Podrás comparar las respuestas antes de decidir qué agente utilizar.</li>
+    </ul>
+    <p class="mt-5 rounded-xl bg-indigo-50 p-3 text-sm leading-relaxed text-indigo-800">Las pruebas se ejecutan por separado. Podrás revisar sus respuestas en Ejecuciones. Guarda los cambios para empezar; no necesitas activar al agente para atender clientes.</p>
+    <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button id="agentModeCancel" type="button" autofocus class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancelar</button><button id="agentModeConfirm" type="button" class="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">Seleccionar modo de pruebas</button></div>
+  </div>
+</dialog>
+<div id="agentPromptToast" role="status" hidden class="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-50 max-w-[calc(100vw-32px)] rounded-2xl bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow-lg"></div>
+<template id="agentBusinessUnitTemplate">
+  <div data-business-unit-row class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+    <div class="mb-3 flex items-center justify-between gap-3">
+      <span data-unit-label class="text-xs font-semibold text-slate-500">Unidad de negocio</span>
+      <button type="button" data-remove-business-unit class="rounded-lg px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">Quitar unidad</button>
+    </div>
+    <label class="mb-3 block text-sm font-medium text-slate-700">Nombre
+      <input type="text" data-unit-name maxlength="100" required class="mt-2 block w-full rounded-xl border border-slate-300 bg-white p-3 text-sm uppercase focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+    </label>
+    <label class="block text-sm font-medium text-slate-700">Descripción
+      <textarea data-unit-description rows="6" maxlength="4000" required class="mt-2 block w-full rounded-xl border border-slate-300 bg-white p-3 text-sm leading-relaxed focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"></textarea>
+    </label>
+  </div>
+</template>
+<template id="agentServiceFlowTemplate">
+  <div data-service-flow-row class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+    <div class="mb-3 flex items-center justify-between gap-3">
+      <span class="text-xs font-semibold text-slate-500">Servicio del flujo</span>
+      <button type="button" data-remove-service-flow class="rounded-lg px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">Quitar servicio</button>
+    </div>
+    <label class="block text-sm font-medium text-slate-700">Nombre del servicio
+      <input type="text" data-service-name maxlength="100" required class="mt-2 block w-full rounded-xl border border-slate-300 bg-white p-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+    </label>
+    <div data-service-questions class="mt-4 ml-4 space-y-2 sm:ml-8"></div>
+    <button type="button" data-add-service-question class="mt-3 ml-4 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 disabled:opacity-50 sm:ml-8">+ Agregar pregunta</button>
+  </div>
+</template>
+<template id="agentServiceQuestionTemplate">
+  <div data-service-question-row class="flex items-end gap-2">
+    <label class="min-w-0 flex-1 text-sm font-medium text-slate-700">Pregunta
+      <input type="text" data-service-question maxlength="500" required class="mt-2 block w-full rounded-xl border border-slate-300 bg-white p-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+    </label>
+    <button type="button" data-remove-service-question aria-label="Quitar pregunta" class="mb-1 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">Quitar</button>
+  </div>
+</template>
+<script src="{% static 'agents/agent-prompts.js' %}?v=20261111-annotation-summary" defer></script>
+<script src="{% static 'agents/agent-test.js' %}?v=20261026-agent-test-1" defer></script>
+{% endblock %}

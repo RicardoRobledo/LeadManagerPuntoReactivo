@@ -1,0 +1,44 @@
+{% extends 'prospects/base_dashboard.html' %}
+
+{% block title %}Análisis | Lead Manager{% endblock %}
+
+{% block content %}
+<div class="min-h-screen panel-background p-4 sm:p-6 lg:p-8">
+  <div class="mx-auto max-w-4xl">
+    <a href="{% url 'app_prospects:agents' %}" class="text-sm font-semibold text-indigo-600 hover:text-indigo-800">&larr; Volver a agentes</a>
+    <h1 class="mt-5 text-2xl font-bold text-slate-900">Análisis de {{ agent.name }}</h1>
+    <p class="mt-2 text-sm text-slate-500">Anotaciones de aprendizaje guardadas a partir de las conversaciones analizadas.</p>
+    <nav aria-label="Filtrar anotaciones por estado" class="mt-5 flex flex-wrap gap-2">
+      <a href="?page=1" {% if not annotation_status %}aria-current="true"{% endif %} class="rounded-lg border px-3 py-2 text-sm font-semibold {% if not annotation_status %}border-indigo-200 bg-indigo-50 text-indigo-700{% else %}border-slate-200 bg-white text-slate-600 hover:bg-slate-50{% endif %}">Todas</a>
+      <a href="?page=1&amp;annotation_status=active" {% if annotation_status %}aria-current="true"{% endif %} class="rounded-lg border px-3 py-2 text-sm font-semibold {% if annotation_status %}border-indigo-200 bg-indigo-50 text-indigo-700{% else %}border-slate-200 bg-white text-slate-600 hover:bg-slate-50{% endif %}">Solo activas</a>
+    </nav>
+    <div class="mt-6 space-y-4">
+      {% for annotation in page_obj %}
+      <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+          <span><span class="font-mono" title="{{ annotation.pk }}">{{ annotation.pk|stringformat:'s'|slice:':8' }}…</span> · <time datetime="{{ annotation.created_at|date:'c' }}">{{ annotation.created_at|date:'d/m/Y g:i A' }}</time> · {{ annotation.agent.name }}</span>
+          <span class="rounded-full bg-slate-100 px-3 py-1 font-medium">{% if annotation.is_active %}Activo{% else %}Pendiente de revisión{% endif %}</span>
+        </div>
+        <section class="mt-4">
+          <h2 class="text-sm font-semibold text-slate-900">Observaciones</h2>
+          <p class="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-700">{{ annotation.observation|default:'Sin observaciones registradas.' }}</p>
+        </section>
+        <section class="mt-4">
+          <h2 class="text-sm font-semibold text-slate-900">Sugerencias</h2>
+          <p class="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-700">{{ annotation.suggestion }}</p>
+        </section>
+      </article>
+      {% empty %}
+      <p class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">{% if annotation_status %}No hay anotaciones activas.{% else %}Aún no hay anotaciones de análisis guardadas.{% endif %}</p>
+      {% endfor %}
+    </div>
+    {% if page_obj.has_other_pages %}
+    <nav class="mt-6 flex items-center justify-between text-sm" aria-label="Paginación de análisis">
+      {% if page_obj.has_previous %}<a class="font-semibold text-indigo-600" href="{% querystring page=page_obj.previous_page_number %}">Anterior</a>{% else %}<span></span>{% endif %}
+      <span class="text-slate-500">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}<a class="font-semibold text-indigo-600" href="{% querystring page=page_obj.next_page_number %}">Siguiente</a>{% else %}<span></span>{% endif %}
+    </nav>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

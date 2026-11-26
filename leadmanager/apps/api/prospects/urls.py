@@ -1,0 +1,47 @@
+from django.urls import path
+
+from .views import (
+    create_message,
+    close_conversation,
+    get_conversation_state,
+    email_exists,
+    get_conversation_history,
+    create_form_conversation,
+    close_form_conversation,
+    get_next_owner,
+    create_email_reminder,
+    create_messenger_reminder,
+    create_sms_reminder,
+    get_not_qualified_conversations,
+    get_reminders,
+    create_sms_reminder,
+    create_messenger_reminder,
+    create_email_reminder,
+    verify_sms_existing_reminder,
+    verify_messenger_existing_reminder,
+    verify_email_existing_reminder,
+    mark_email_as_quoted,
+    mark_messenger_as_quoted,
+    save_not_qualified_lead_classification,
+)
+
+
+urlpatterns = [
+    path('reminders/verify-sms-existing-reminder/',
+         verify_sms_existing_reminder, name='verify_sms_existing_reminder'),
+    path('reminders/verify-messenger-existing-reminder/',
+         verify_messenger_existing_reminder, name='verify_messenger_existing_reminder'),
+    path('reminders/verify-email-existing-reminder/',
+         verify_email_existing_reminder, name='verify_email_existing_reminder'),
+    path('reminders/get-reminders/', get_reminders, name='get_reminders'),
+    path('reminders/create-sms-reminder/',
+         create_sms_reminder, name='create_sms_reminder'),
+    path('reminders/create-messenger-reminder/',
+         create_messenger_reminder, name='create_messenger_reminder'),
+    path('reminders/create-email-reminder/',
+         create_email_reminder, name='create_email_reminder'),
+    path('conversations/not-qualified/', get_not_qualified_conversations,
+         name='get_not_qualified_conversations'),
+    path('conversations/save-not-qualified-classification/', save_not_qualified_lead_classification,
+         name='save_not_qualified_lead_classification'),
+]

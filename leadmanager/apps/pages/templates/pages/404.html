@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Página no encontrada</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            /* Colores extraídos de tu marca */
+            --bg-deep: #1e1b4b;
+            --purple-gradient: linear-gradient(135deg, #4c1d95 0%, #6366f1 100%);
+            --accent-orange: #f59e0b;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --radius: 28px;
+            --transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: radial-gradient(circle at center, #4c1d95 0%, #0f172a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            overflow: hidden;
+        }
+
+        /* --- Animaciones --- */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* --- Contenedor 404 --- */
+        .error-card {
+            background: rgba(255, 255, 255, 0.98);
+            width: 100%;
+            max-width: 500px;
+            border-radius: var(--radius);
+            box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            overflow: hidden;
+            animation: fadeIn 0.6s ease-out forwards;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .error-header {
+            background: var(--purple-gradient);
+            padding: 60px 40px;
+            position: relative;
+        }
+
+        /* El número 404 con estilo */
+        .error-code {
+            font-size: 100px;
+            font-weight: 800;
+            color: white;
+            line-height: 1;
+            letter-spacing: -5px;
+            margin-bottom: 10px;
+            animation: float 4s ease-in-out infinite;
+            display: inline-block;
+            text-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .error-body {
+            padding: 40px;
+        }
+
+        .error-body h1 {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--text-main);
+            margin-bottom: 15px;
+            letter-spacing: -0.5px;
+        }
+
+        .error-body p {
+            font-size: 16px;
+            color: var(--text-muted);
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        /* --- Botón de Regreso --- */
+        .btn-home {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            background: var(--accent-orange);
+            color: white;
+            text-decoration: none;
+            padding: 18px 32px;
+            border-radius: 16px;
+            font-size: 16px;
+            font-weight: 800;
+            transition: var(--transition);
+            box-shadow: 0 10px 25px rgba(245, 158, 11, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-home:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 15px 35px rgba(245, 158, 11, 0.5);
+            filter: brightness(1.1);
+        }
+
+        .btn-home svg {
+            transition: transform 0.3s ease;
+        }
+
+        .btn-home:hover svg {
+            transform: translateX(-5px);
+        }
+
+        /* Decoración de fondo sutil */
+        .circles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        .circles div {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .error-code { font-size: 80px; }
+            .error-body { padding: 30px 20px; }
+            .btn-home { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="error-card">
+        <div class="error-header">
+            <div class="error-code">404</div>
+            <p style="color: rgba(255,255,255,0.8); font-weight: 600;">Página no encontrada</p>
+        </div>
+
+        <div class="error-body">
+            <h1>¿Te has perdido?</h1>
+            <p>Parece que la página que buscabas se ha escapado o ha cambiado de lugar.</p>
+            
+            <a href="/" class="btn-home">
+                Volver a inicio
+            </a>
+        </div>
+    </div>
+
+    <div class="circles">
+        <div style="width: 300px; height: 300px; top: -100px; left: -100px;"></div>
+        <div style="width: 200px; height: 200px; bottom: -50px; right: -50px;"></div>
+    </div>
+
+</body>
+</html>

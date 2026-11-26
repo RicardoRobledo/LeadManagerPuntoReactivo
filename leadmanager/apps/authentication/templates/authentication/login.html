@@ -1,0 +1,193 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lead Manager — Iniciar sesión</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #ffffff;
+      background-image:
+        radial-gradient(ellipse at top left, rgba(0, 183, 220, 0.08), transparent 55%),
+        radial-gradient(ellipse at bottom right, rgba(85, 36, 239, 0.06), transparent 55%);
+      color: #080b26;
+    }
+    .brand-logo {
+      width: 100%;
+      max-width: 420px;
+      height: auto;
+    }
+    /* Evita duplicar el control de visibilidad que agrega Edge al escribir. */
+    #password::-ms-reveal {
+      display: none;
+    }
+    #password-toggle svg[hidden] {
+      display: none;
+    }
+    /* Animación suave de entrada */
+    .fade-in-up {
+      animation: fadeInUp 0.5s ease-out forwards;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    @keyframes fadeInUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .fade-in-up {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen w-full flex items-center justify-center p-5 sm:p-8">
+
+  <main class="fade-in-up w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 items-center gap-10 lg:gap-20 py-8">
+    
+    <div class="w-full min-w-0 flex flex-col items-center md:items-start text-center md:text-left">
+      <div class="w-full max-w-[420px] mb-8">
+          <img 
+            src="{% static 'imgs/logo.png' %}"
+            alt="Punto Reactivo, agencia de marketing"
+            class="brand-logo object-contain"
+          />
+        </div>
+      <h1 class="inline-block font-extrabold text-4xl md:text-5xl
+           tracking-tight leading-[1.25] pb-2
+           text-[#080b26] overflow-visible">
+        Smarketing Lead Manager
+      </h1>
+
+      <div class="mt-6 flex items-center gap-3 text-sm text-[#34468a] bg-white border border-[#dde7f7] px-4 py-3 rounded-2xl">
+        <svg class="w-5 h-5 flex-shrink-0 text-[#2451f5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <span>Tu gestor de interacciones con prospectos</span>
+      </div>
+    </div>
+
+    <div class="w-full max-w-[450px] justify-self-center md:justify-self-end bg-white border border-[#e2e7f3] rounded-3xl shadow-[0_24px_70px_rgba(21,32,82,0.08)] p-6 sm:p-8 lg:p-10 relative overflow-hidden">
+      <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#00b7dc] via-[#2b45ff] to-[#5524ef]"></div>
+
+      <div class="mb-8">
+        <h2 class="text-2xl font-bold text-[#080b26]">Te damos la bienvenida</h2>
+        <p class="text-slate-500 mt-2 text-sm">Inicia sesión para acceder a tu panel</p>
+      </div>
+
+      {% if messages %}
+        <div class="mb-6 space-y-2">
+          {% for message in messages %}
+            <div role="alert" class="p-3 rounded-lg bg-red-50 border-l-4 border-red-500 text-red-700 text-sm flex items-start gap-2">
+              <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <span>{{ message }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <form method="post" action="/authentication/login/" class="space-y-5">
+        {% csrf_token %}
+        
+        <div>
+          <label for="username" class="block text-sm font-semibold text-[#20294b] mb-1.5">Usuario</label>
+          <div class="relative group">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-5 w-5 text-slate-400 group-focus-within:text-[#2451f5] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12H8m8 0V8a2 2 0 00-2-2H8m8 6v4a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2h4"/>
+              </svg>
+            </div>
+            <input 
+              id="username"
+              name="username" 
+              type="text" 
+              autocomplete="username"
+              autocapitalize="none"
+              spellcheck="false"
+              required 
+              value="{{ request.POST.username|default:'' }}"
+              placeholder="P. ej., juan.perez"
+              class="block w-full pl-10 pr-3 py-3 bg-slate-50/70 border border-slate-200 rounded-xl text-[#080b26] placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2451f5] focus:border-transparent transition-all duration-200 sm:text-sm"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label for="password" class="block text-sm font-semibold text-[#20294b] mb-1.5">Contraseña</label>
+          <div class="relative group">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-5 w-5 text-slate-400 group-focus-within:text-[#2451f5] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+              </svg>
+            </div>
+            <input 
+              id="password"
+              name="password" 
+              type="password" 
+              autocomplete="current-password"
+              required 
+              placeholder="••••••••" 
+              class="block w-full pl-10 pr-12 py-3 bg-slate-50/70 border border-slate-200 rounded-xl text-[#080b26] placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2451f5] focus:border-transparent transition-all duration-200 sm:text-sm"
+            />
+            <button id="password-toggle" type="button" onclick="togglePassword()" aria-label="Mostrar contraseña" aria-controls="password" aria-pressed="false" class="absolute inset-y-0 right-0 px-3 flex items-center rounded-xl text-slate-400 hover:text-[#2451f5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2451f5]">
+              <svg id="eye-icon" class="h-5 w-5" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              <svg id="eye-off-icon" class="h-5 w-5" hidden aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button 
+          type="submit" 
+          class="w-full flex justify-center py-3 px-4 rounded-xl
+                text-sm font-bold text-white
+                bg-gradient-to-r from-[#2451f5] to-[#5524ef]
+                hover:from-[#1942d9] hover:to-[#4317d6]
+                shadow-[0_8px_20px_rgba(43,69,255,0.2)]
+                focus:outline-none focus:ring-2 focus:ring-[#2451f5] focus:ring-offset-2
+                transition-all duration-200 transform motion-safe:hover:-translate-y-0.5">
+          Iniciar sesión
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    function togglePassword() {
+      const passwordInput = document.getElementById('password');
+      const eyeIcon = document.getElementById('eye-icon');
+      const eyeOffIcon = document.getElementById('eye-off-icon');
+      const passwordToggle = document.getElementById('password-toggle');
+      
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        eyeIcon.toggleAttribute('hidden', true);
+        eyeOffIcon.toggleAttribute('hidden', false);
+        passwordToggle.setAttribute('aria-label', 'Ocultar contraseña');
+        passwordToggle.setAttribute('aria-pressed', 'true');
+      } else {
+        passwordInput.type = 'password';
+        eyeIcon.toggleAttribute('hidden', false);
+        eyeOffIcon.toggleAttribute('hidden', true);
+        passwordToggle.setAttribute('aria-label', 'Mostrar contraseña');
+        passwordToggle.setAttribute('aria-pressed', 'false');
+      }
+    }
+  </script>
+</body>
+</html>

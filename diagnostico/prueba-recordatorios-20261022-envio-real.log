@@ -1,0 +1,20 @@
+2026-10-22 20:02:33,309 INFO ESCENARIO: ENVÍO REAL DE PRUEBA: una amarilla por canal | IDs=[281, 282, 283, 284, 285, 286]
+2026-10-22 20:02:34,284 INFO Evaluación: id=281 | canal=form | semaforo=verde | cumple_filtros=False | Semáforo verde; requiere amarillo
+2026-10-22 20:02:34,284 INFO Evaluación: id=282 | canal=form | semaforo=amarillo | cumple_filtros=True | Listo para simulación
+2026-10-22 20:02:34,284 INFO Evaluación: id=283 | canal=web | semaforo=verde | cumple_filtros=False | Semáforo verde; requiere amarillo
+2026-10-22 20:02:34,284 INFO Evaluación: id=284 | canal=web | semaforo=amarillo | cumple_filtros=True | Listo para simulación
+2026-10-22 20:02:34,286 INFO Evaluación: id=285 | canal=email | semaforo=verde | cumple_filtros=False | Semáforo verde; requiere amarillo
+2026-10-22 20:02:34,286 INFO Evaluación: id=286 | canal=email | semaforo=amarillo | cumple_filtros=True | Listo para simulación
+2026-10-22 20:02:34,757 INFO Recordatorios: modo=real | canales=todos | limite_48h=2026-10-21T02:02:34.320500+00:00 | total=6 | con_48h=6 | sin_recordatorio=6 | en_proceso=3
+2026-10-22 20:02:34,829 INFO ENVÍO REAL DE PRUEBA: id=282 | canal=Formulario | único destinatario=yupaglu@gmail.com
+2026-10-22 20:02:36,435 INFO Reminder email sent to yupaglu@gmail.com
+2026-10-22 20:02:36,435 INFO Recordatorio aceptado por SMTP: conversacion_id=282 | canal=form | destinatario=yupaglu@gmail.com | origen=prospect.email (redirigido a correo autorizado de prueba)
+2026-10-22 20:02:36,435 INFO ENVÍO REAL DE PRUEBA: id=284 | canal=Chatweb | único destinatario=yupaglu@gmail.com
+2026-10-22 20:02:37,695 INFO Reminder email sent to yupaglu@gmail.com
+2026-10-22 20:02:37,696 INFO Recordatorio aceptado por SMTP: conversacion_id=284 | canal=web | destinatario=yupaglu@gmail.com | origen=prospect.email (redirigido a correo autorizado de prueba)
+2026-10-22 20:02:37,696 INFO ENVÍO REAL DE PRUEBA: id=286 | canal=Correo | único destinatario=yupaglu@gmail.com
+2026-10-22 20:02:38,886 INFO Reminder email sent to yupaglu@gmail.com
+2026-10-22 20:02:38,886 INFO Recordatorio aceptado por SMTP: conversacion_id=286 | canal=email | destinatario=yupaglu@gmail.com | origen=prospect.email (redirigido a correo autorizado de prueba)
+2026-10-22 20:02:39,087 INFO Reminders sent to 3 stale conversation(s). Sin correo válido: 0.
+2026-10-22 20:02:39,266 INFO ROLLBACK completado: contactos y semáforos originales conservados.
+2026-10-22 20:02:39,530 INFO Verificación final: fases, contactos, fechas e historiales intactos. Aceptados por SMTP=3 | fallidos=0.

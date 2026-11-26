@@ -1,0 +1,11 @@
+<option value="all" {% if semaforo == 'all' %}selected{% endif %}>Todos los estados</option>
+<option value="verde" {% if semaforo == 'verde' %}selected{% endif %}>Escalados (verde)</option>
+<option value="amarillo" {% if semaforo == 'amarillo' %}selected{% endif %}>En proceso (amarillo)</option>
+<option value="descartados" {% if semaforo == 'descartados' %}selected{% endif %}>Descartados (rojo y gris)</option>
+{% if semaforo == 'no_escalados' %}
+<option value="no_escalados" selected>No escalados (amarillo, gris y rojo)</option>
+{% elif semaforo == 'rojo' %}
+<option value="rojo" selected>Rojo</option>
+{% elif semaforo == 'gris' %}
+<option value="gris" selected>Gris</option>
+{% endif %}

@@ -1,0 +1,134 @@
+{
+  "lote": "prueba-recordatorios-20261022",
+  "smtp_real": true,
+  "destinatario_prueba": "yupaglu@gmail.com",
+  "datos_originales_conservados": true,
+  "escenarios": [
+    {
+      "escenario": "ENVÍO REAL DE PRUEBA: una amarilla por canal",
+      "resultado": {
+        "procesados": 3
+      },
+      "evaluacion": [
+        {
+          "id": 281,
+          "prospect_id": 40,
+          "canal": "form",
+          "semaforo": "verde",
+          "escalada": true,
+          "estado_tecnico": "closed",
+          "creada": "20/10/2026 18:16:28",
+          "antiguedad_horas": 51.17,
+          "fase_recordatorio": null,
+          "cumple_filtros": false,
+          "destinatario_habilitado": true,
+          "origen_destinatario": "prospect.email",
+          "podria_intentar_envio": false,
+          "motivos": [
+            "Semáforo verde; requiere amarillo"
+          ]
+        },
+        {
+          "id": 282,
+          "prospect_id": 41,
+          "canal": "form",
+          "semaforo": "amarillo",
+          "escalada": false,
+          "estado_tecnico": "open",
+          "creada": "20/10/2026 18:15:28",
+          "antiguedad_horas": 51.19,
+          "fase_recordatorio": null,
+          "cumple_filtros": true,
+          "destinatario_habilitado": true,
+          "origen_destinatario": "prospect.email",
+          "podria_intentar_envio": true,
+          "motivos": []
+        },
+        {
+          "id": 283,
+          "prospect_id": 42,
+          "canal": "web",
+          "semaforo": "verde",
+          "escalada": true,
+          "estado_tecnico": "closed",
+          "creada": "20/10/2026 18:14:28",
+          "antiguedad_horas": 51.21,
+          "fase_recordatorio": null,
+          "cumple_filtros": false,
+          "destinatario_habilitado": true,
+          "origen_destinatario": "prospect.email",
+          "podria_intentar_envio": false,
+          "motivos": [
+            "Semáforo verde; requiere amarillo"
+          ]
+        },
+        {
+          "id": 284,
+          "prospect_id": 43,
+          "canal": "web",
+          "semaforo": "amarillo",
+          "escalada": false,
+          "estado_tecnico": "open",
+          "creada": "20/10/2026 18:13:28",
+          "antiguedad_horas": 51.22,
+          "fase_recordatorio": null,
+          "cumple_filtros": true,
+          "destinatario_habilitado": true,
+          "origen_destinatario": "prospect.email",
+          "podria_intentar_envio": true,
+          "motivos": []
+        },
+        {
+          "id": 285,
+          "prospect_id": 44,
+          "canal": "email",
+          "semaforo": "verde",
+          "escalada": true,
+          "estado_tecnico": "closed",
+          "creada": "20/10/2026 18:12:28",
+          "antiguedad_horas": 51.24,
+          "fase_recordatorio": null,
+          "cumple_filtros": false,
+          "destinatario_habilitado": true,
+          "origen_destinatario": "prospect.email",
+          "podria_intentar_envio": false,
+          "motivos": [
+            "Semáforo verde; requiere amarillo"
+          ]
+        },
+        {
+          "id": 286,
+          "prospect_id": 45,
+          "canal": "email",
+          "semaforo": "amarillo",
+          "escalada": false,
+          "estado_tecnico": "open",
+          "creada": "20/10/2026 18:11:28",
+          "antiguedad_horas": 51.26,
+          "fase_recordatorio": null,
+          "cumple_filtros": true,
+          "destinatario_habilitado": true,
+          "origen_destinatario": "prospect.email",
+          "podria_intentar_envio": true,
+          "motivos": []
+        }
+      ],
+      "ids_seleccionados": [
+        282,
+        284,
+        286
+      ]
+    }
+  ],
+  "ids_aceptados_smtp": [
+    282,
+    284,
+    286
+  ],
+  "ids_fallidos": [],
+  "ids_bitacora": [
+    3,
+    2,
+    1
+  ]
+}

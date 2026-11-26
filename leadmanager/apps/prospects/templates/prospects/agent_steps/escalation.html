@@ -1,0 +1,24 @@
+<div class="space-y-5">
+  <div>
+    <h2 class="text-lg font-semibold text-slate-900">Atención y escalamiento</h2>
+    <p class="mt-1 text-sm text-slate-500">Define qué contactos se atienden o descartan y cuándo debe intervenir una persona.</p>
+  </div>
+  <section class="grid grid-cols-1 gap-4 lg:grid-cols-2" aria-label="Clasificación del prospecto">
+    <div class="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+      {% include 'prospects/agent_steps/_field.html' with field=prompt_form.cuando_atender %}
+      <p class="mt-2 text-xs text-slate-500">Criterios para reconocer prospectos con interés de compra o que necesitan calificación.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+      {% include 'prospects/agent_steps/_field.html' with field=prompt_form.cuando_descartar %}
+      <p class="mt-2 text-xs text-slate-500">Criterios de descarte, despedida y manejo por defecto sin escalar a una persona.</p>
+    </div>
+  </section>
+  <section class="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+    <h3 class="mb-3 text-base font-semibold text-slate-900">Reglas de escalamiento humano</h3>
+    <p class="mb-4 text-sm text-slate-500">Si el prospecto debe atenderse y no fue descartado, escala cuando aplique alguna de estas reglas.</p>
+    <div id="agentEscalationRules" class="space-y-3" aria-label="Reglas de escalamiento"></div>
+    {{ prompt_form.escalation_rules }}
+    <p id="error_escalation_rules" data-prompt-error="escalation_rules" hidden class="mt-2 text-sm text-red-600"></p>
+    <button id="agentEscalationRuleAdd" type="button" class="mt-4 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50">+ Agregar regla</button>
+  </section>
+</div>

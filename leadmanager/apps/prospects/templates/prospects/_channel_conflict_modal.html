@@ -1,0 +1,44 @@
+<dialog open aria-labelledby="channel-conflict-title" aria-describedby="channel-conflict-description" class="fixed inset-0 z-50 m-auto max-h-[90vh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-3xl border border-slate-100 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-slate-950/60">
+  <div class="p-6 sm:p-8">
+    <div class="flex items-start justify-between gap-4">
+      <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600" aria-hidden="true">
+        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.3 3.9 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+      </div>
+      <button type="button" onclick="this.closest('dialog').close()" aria-label="Cerrar aviso" class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="m6 6 12 12M18 6 6 18"/></svg></button>
+    </div>
+    <h2 id="channel-conflict-title" class="mt-5 text-xl font-bold tracking-tight sm:text-2xl">{{ conflict.title|default:'Estos canales ya están en uso' }}</h2>
+    {% if conflict.items %}
+    <p id="channel-conflict-description" class="mt-2 text-sm leading-relaxed text-slate-500">Cada canal puede tener un solo agente activo. Los siguientes ya están asignados:</p>
+    <ul class="mt-5 space-y-2" aria-label="Canales ocupados">
+      {% for item in conflict.items %}
+      <li class="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+        <span aria-hidden="true" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl {% if item.channel == 'whatsapp' %}bg-emerald-100 text-emerald-700{% elif item.channel == 'instagram' %}bg-pink-100 text-pink-700{% elif item.channel == 'linkedin' %}bg-sky-100 text-sky-700{% elif item.channel == 'messenger' %}bg-blue-100 text-blue-700{% elif item.channel == 'email' %}bg-orange-100 text-orange-700{% else %}bg-indigo-100 text-indigo-700{% endif %}">
+          {% if item.channel == 'linkedin' %}<span class="text-lg font-bold">in</span>
+          {% elif item.channel == 'instagram' %}<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".8" fill="currentColor" stroke="none"/></svg>
+          {% elif item.channel == 'email' %}<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>
+          {% elif item.channel == 'form' %}<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="2"/><path stroke-linecap="round" d="M9 8h6M9 12h6M9 16h4"/></svg>
+          {% elif item.channel == 'whatsapp' %}<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M20 11.5a8 8 0 0 1-11.9 7L4 20l1.3-4a8 8 0 1 1 14.7-4.5Z"/><path stroke-linecap="round" d="M9 8.5c.5 2.7 2.7 4.9 5.5 5.5l1-1.2"/></svg>
+          {% elif item.channel == 'messenger' %}<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3c-5 0-9 3.7-9 8.4 0 2.5 1.2 4.7 3 6.2V21l3.2-1.8c.9.3 1.8.4 2.8.4 5 0 9-3.6 9-8.2S17 3 12 3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="m7.5 13.5 3.1-3.3 2.5 2 3.4-2.7"/></svg>
+          {% else %}<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linejoin="round" d="M4 5h16v11H9l-5 3V5Z"/><path stroke-linecap="round" d="M8 9h8M8 12h5"/></svg>{% endif %}
+        </span>
+        <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-slate-900">{{ item.label }}</span><span class="mt-0.5 block text-xs text-slate-500">Asignado a {{ item.agent }}</span></span>
+        <span class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">En uso</span>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="mt-5 text-sm leading-relaxed text-slate-500">Para continuar, libera los canales en el otro agente o cambia tu selección.</p>
+    {% else %}
+    <p id="channel-conflict-description" class="mt-2 text-sm leading-relaxed text-slate-500">{{ conflict.message }}</p>
+    {% endif %}
+    <div class="mt-6"><button type="button" autofocus onclick="this.closest('dialog').close()" class="w-full rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Entendido</button></div>
+  </div>
+</dialog>
+<script>
+  (() => {
+    const dialog = document.currentScript.previousElementSibling;
+    if (typeof dialog.showModal === 'function') {
+      dialog.removeAttribute('open');
+      dialog.showModal();
+    }
+  })();
+</script>

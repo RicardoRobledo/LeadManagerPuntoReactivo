@@ -1,0 +1,119 @@
+{
+  "lote": "prueba-recordatorios-20261022",
+  "total": 6,
+  "conversaciones": [
+    {
+      "id": 281,
+      "prospect_id": 40,
+      "canal": "form",
+      "semaforo": "verde",
+      "escalada": true,
+      "estado_tecnico": "closed",
+      "creada": "20/10/2026 18:16:28",
+      "antiguedad_horas": 51.12,
+      "fase_recordatorio": null,
+      "cumple_filtros": false,
+      "destinatario_habilitado": false,
+      "origen_destinatario": null,
+      "podria_intentar_envio": false,
+      "motivos": [
+        "Semáforo verde; requiere amarillo",
+        "Destinatario de envío sin habilitar para esta prueba"
+      ]
+    },
+    {
+      "id": 282,
+      "prospect_id": 41,
+      "canal": "form",
+      "semaforo": "rojo",
+      "escalada": false,
+      "estado_tecnico": "open",
+      "creada": "20/10/2026 18:15:28",
+      "antiguedad_horas": 51.14,
+      "fase_recordatorio": null,
+      "cumple_filtros": false,
+      "destinatario_habilitado": false,
+      "origen_destinatario": null,
+      "podria_intentar_envio": false,
+      "motivos": [
+        "Semáforo rojo; requiere amarillo",
+        "Destinatario de envío sin habilitar para esta prueba"
+      ]
+    },
+    {
+      "id": 283,
+      "prospect_id": 42,
+      "canal": "web",
+      "semaforo": "verde",
+      "escalada": true,
+      "estado_tecnico": "closed",
+      "creada": "20/10/2026 18:14:28",
+      "antiguedad_horas": 51.16,
+      "fase_recordatorio": null,
+      "cumple_filtros": false,
+      "destinatario_habilitado": false,
+      "origen_destinatario": null,
+      "podria_intentar_envio": false,
+      "motivos": [
+        "Semáforo verde; requiere amarillo",
+        "Destinatario de envío sin habilitar para esta prueba"
+      ]
+    },
+    {
+      "id": 284,
+      "prospect_id": 43,
+      "canal": "web",
+      "semaforo": null,
+      "escalada": false,
+      "estado_tecnico": "open",
+      "creada": "20/10/2026 18:13:28",
+      "antiguedad_horas": 51.17,
+      "fase_recordatorio": null,
+      "cumple_filtros": false,
+      "destinatario_habilitado": false,
+      "origen_destinatario": null,
+      "podria_intentar_envio": false,
+      "motivos": [
+        "Semáforo ausente; requiere amarillo",
+        "Destinatario de envío sin habilitar para esta prueba"
+      ]
+    },
+    {
+      "id": 285,
+      "prospect_id": 44,
+      "canal": "email",
+      "semaforo": "verde",
+      "escalada": true,
+      "estado_tecnico": "closed",
+      "creada": "20/10/2026 18:12:28",
+      "antiguedad_horas": 51.19,
+      "fase_recordatorio": null,
+      "cumple_filtros": false,
+      "destinatario_habilitado": false,
+      "origen_destinatario": null,
+      "podria_intentar_envio": false,
+      "motivos": [
+        "Semáforo verde; requiere amarillo",
+        "Destinatario de envío sin habilitar para esta prueba"
+      ]
+    },
+    {
+      "id": 286,
+      "prospect_id": 45,
+      "canal": "email",
+      "semaforo": "amarillo",
+      "escalada": false,
+      "estado_tecnico": "open",
+      "creada": "20/10/2026 18:11:28",
+      "antiguedad_horas": 51.21,
+      "fase_recordatorio": null,
+      "cumple_filtros": true,
+      "destinatario_habilitado": false,
+      "origen_destinatario": null,
+      "podria_intentar_envio": false,
+      "motivos": [
+        "Destinatario de envío sin habilitar para esta prueba"
+      ]
+    }
+  ]
+}

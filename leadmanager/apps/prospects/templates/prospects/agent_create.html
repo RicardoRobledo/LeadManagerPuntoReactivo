@@ -1,0 +1,15 @@
+{% extends 'prospects/base_dashboard.html' %}
+{% block title %}Crear agente | Lead Manager{% endblock %}
+{% block content %}
+<div class="min-h-screen panel-background p-4 sm:p-6 lg:p-8"><div class="mx-auto max-w-xl">
+  <a href="{% url 'app_prospects:agents' %}" class="text-sm font-semibold text-indigo-700">&larr; Agentes</a>
+  <h1 class="mt-5 text-2xl font-bold text-slate-900">Crear agente de prospección</h1>
+  <p class="mt-2 text-sm text-slate-500">Se creará inactivo con una configuración inicial que podrás personalizar.</p>
+  <form method="post" class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">{% csrf_token %}
+    <label for="id_name" class="block text-sm font-semibold text-slate-700">Nombre</label>
+    <input id="id_name" name="name" type="text" maxlength="100" required value="{{ form.name.value|default_if_none:'' }}" class="mt-2 block w-full rounded-xl border border-slate-300 p-3 text-sm" autofocus>
+    {% for error in form.name.errors %}<p class="mt-2 text-sm text-red-600" role="alert">{{ error }}</p>{% endfor %}
+    <div class="mt-6 flex gap-3"><button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">Crear y configurar</button><a href="{% url 'app_prospects:agents' %}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700">Cancelar</a></div>
+  </form>
+</div></div>
+{% endblock %}

@@ -1,0 +1,21 @@
+{
+  "zona_horaria": "America/Mexico_City",
+  "fecha_prueba": "2026-10-21",
+  "conversaciones": [
+    {
+      "id": 278,
+      "created_at_original": "2026-10-20T20:41:39.632090+00:00",
+      "created_at_prueba": "2026-10-21T00:00:00-06:00"
+    },
+    {
+      "id": 279,
+      "created_at_original": "2026-10-20T20:48:46.869529+00:00",
+      "created_at_prueba": "2026-10-21T12:00:00-06:00"
+    },
+    {
+      "id": 280,
+      "created_at_original": "2026-10-20T20:50:28.390209+00:00",
+      "created_at_prueba": "2026-10-21T23:59:59.999999-06:00"
+    }
+  ]
+}

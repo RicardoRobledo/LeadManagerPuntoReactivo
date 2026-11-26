@@ -1,0 +1,18 @@
+<div class="space-y-5">
+  <div>
+    <h2 class="text-lg font-semibold text-slate-900">Flujo de conversación</h2>
+    <p class="mt-1 text-sm text-slate-500">Define el objetivo y las preguntas que guían la conversación.</p>
+  </div>
+  {% include 'prospects/agent_steps/_field.html' with field=prompt_form.objective_conversation %}
+  <section aria-labelledby="agentServiceFlowHeading">
+    <h3 id="agentServiceFlowHeading" class="mb-2 text-sm font-semibold text-slate-700">Preguntas por servicio</h3>
+    <p class="mb-3 text-xs text-slate-500">Usa «Otros servicios» para las preguntas generales. Cada servicio necesita un nombre y al menos una pregunta antes de guardar.</p>
+    <div id="agentServiceFlows" class="space-y-3"></div>
+    <p id="agentServiceFlowsEmpty" class="rounded-xl border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500">Aún no hay servicios en el flujo.</p>
+    <p id="error_service_flows" data-prompt-error="service_flows" hidden class="mt-2 text-sm text-red-600"></p>
+    <button id="agentServiceFlowAdd" type="button" class="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50">+ Agregar servicio</button>
+  </section>
+  {% include 'prospects/agent_steps/_field.html' with field=prompt_form.agrupar_preguntas %}
+  {% include 'prospects/agent_steps/_field.html' with field=prompt_form.learning_enabled %}
+  {% include 'prospects/agent_steps/_field.html' with field=prompt_form.flujo_conversacion %}
+</div>

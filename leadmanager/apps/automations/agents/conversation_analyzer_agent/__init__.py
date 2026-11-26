@@ -1,0 +1,3 @@
+from .conversation_analyzer_resource_handler import ConversationAnalyzerResourceHandler
+
+__all__ = ['ConversationAnalyzerResourceHandler']

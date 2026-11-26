@@ -1,0 +1,2562 @@
+{% extends 'prospects/base_dashboard.html' %}
+{% load static %}
+
+{% block title %}Conversaciones | Lead Manager{% endblock %}
+
+{% block extra_head %}
+<style>
+  .conversations-page select {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  @media (min-width: 640px) {
+    .conversations-page select {
+      max-width: min(100%, 20rem);
+    }
+  }
+
+  .conversations-table th,
+  .conversations-table td {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    overflow-wrap: anywhere;
+  }
+
+  .conversations-table .conversation-actions {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  #conversationModal {
+    color: #0f172a;
+  }
+
+  .conversation-modal-viewport {
+    display: flex;
+    min-height: 100%;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .conversation-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgb(15 23 42 / 48%);
+    backdrop-filter: blur(6px);
+  }
+
+  .conversation-dialog {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 1180px;
+    height: min(860px, calc(100dvh - 48px));
+    overflow: hidden;
+    border: 1px solid rgb(255 255 255 / 80%);
+    border-radius: 24px;
+    background: #fff;
+    box-shadow: 0 32px 100px rgb(15 23 42 / 24%);
+    outline: none;
+  }
+
+  .conversation-modal-header {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #fff;
+  }
+
+  .conversation-modal-heading {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .conversation-modal-icon {
+    display: grid;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    place-items: center;
+    border: 1px solid #e0e7ff;
+    border-radius: 14px;
+    background: #eef2ff;
+    color: #4f46e5;
+  }
+
+  #conversationModal #modal-title {
+    color: #0f172a;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.4;
+  }
+
+  .conversation-modal-subtitle {
+    margin-top: 2px;
+    color: #64748b;
+    font-size: 12px;
+  }
+
+  .conversation-modal-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .conversation-modal-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .conversation-modal-close {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    place-items: center;
+    border: 1px solid #e2e8f0;
+    border-radius: 11px;
+    background: #fff;
+    color: #64748b;
+    transition: background 150ms, color 150ms;
+  }
+
+  .conversation-modal-close:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+
+  .conversation-history-navigation {
+    display: flex;
+    flex-shrink: 0;
+    align-self: flex-end;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 24px 0;
+  }
+
+  .conversation-history-navigation button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid #e0e7ff;
+    border-radius: 10px;
+    background: #fff;
+    color: #4338ca;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .conversation-history-navigation button:hover:not(:disabled) {
+    background: #eef2ff;
+  }
+
+  .conversation-history-navigation button:disabled {
+    border-color: #e2e8f0;
+    background: #f1f5f9;
+    color: #94a3b8;
+    cursor: not-allowed;
+  }
+
+  #conversationPosition {
+    color: #64748b;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  #conversationModal button:focus-visible,
+  #conversationModal [tabindex="0"]:focus-visible {
+    outline: 2px solid #6366f1;
+    outline-offset: -3px;
+  }
+
+  .conversation-modal-switch {
+    display: none;
+    flex-shrink: 0;
+    gap: 4px;
+    padding: 6px;
+    margin: 12px 16px;
+    border-radius: 12px;
+    background: #f1f5f9;
+  }
+
+  .conversation-modal-switch button {
+    flex: 1;
+    padding: 9px 12px;
+    border-radius: 8px;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .conversation-modal-switch button[aria-pressed="true"] {
+    background: #fff;
+    color: #4338ca;
+    box-shadow: 0 1px 4px rgb(15 23 42 / 8%);
+  }
+
+  .conversation-modal-body {
+    display: grid;
+    flex: 1;
+    min-height: 0;
+    grid-template-columns: 340px minmax(0, 1fr);
+  }
+
+  #conversationModal #crmColumn {
+    min-width: 0;
+    min-height: 0;
+    width: auto;
+    overflow-y: auto;
+    border-right: 1px solid #e2e8f0;
+    background: #f8fafc;
+  }
+
+  #conversationModal #crmPanel {
+    padding: 20px;
+  }
+
+  #conversationModal .conversation-detail-card {
+    padding: 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 3%);
+  }
+
+  #crmPanel [class~="uppercase"] {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+
+  #conversationModal .conversation-detail-card > p:first-child {
+    margin-bottom: 12px;
+    color: #334155;
+    font-size: 13px;
+  }
+
+  #conversationModal .conversation-detail-card p {
+    overflow-wrap: anywhere;
+    line-height: 1.65;
+  }
+
+  #conversationModal .conversation-score-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  #conversationModal #crmScore {
+    color: #4338ca;
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1.15;
+  }
+
+  .conversation-score-icon {
+    display: grid;
+    width: 46px;
+    height: 46px;
+    place-items: center;
+    border-radius: 14px;
+    background: #eef2ff;
+    color: #6366f1;
+  }
+
+  #conversationModal .conversation-contact-card > div {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    align-items: baseline;
+    gap: 12px;
+    padding-top: 8px;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  #conversationModal .conversation-contact-card > div > p:first-child {
+    font-size: 12px;
+  }
+
+  #conversationModal #crmContactoCorreo {
+    font-family: inherit;
+  }
+
+  .conversation-empty-analysis {
+    min-height: 180px;
+    margin: 20px;
+    padding: 24px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 16px;
+  }
+
+  #conversationModal #attributionPanel {
+    padding: 0 20px 20px;
+  }
+
+  #attributionPanel > h4 {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+
+  #conversationModal #chatColumn {
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    width: auto;
+    flex-direction: column;
+    background: #e4f0df;
+  }
+
+  .conversation-chat-heading {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 18px 24px;
+    border-bottom: 1px solid #f1f5f9;
+    background: #fff;
+  }
+
+  .conversation-chat-heading h4 {
+    color: #334155;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .conversation-chat-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    color: #64748b;
+    font-size: 11px;
+  }
+
+  .conversation-chat-legend > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .conversation-participant-avatar {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .conversation-participant-avatar--prospect {
+    border-color: #c7d2fe;
+    background: #e0e7ff;
+    color: #4338ca;
+  }
+
+  .conversation-participant-avatar--assistant {
+    border-color: #e9d5ff;
+    background: #f3e8ff;
+    color: #7e22ce;
+  }
+
+  .conversation-chat-legend .conversation-participant-avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 11px;
+  }
+
+  #modalChatScroll {
+    flex: 1;
+    min-height: 0;
+    padding: 16px 24px 24px;
+    overflow-y: auto;
+    background-color: #e4f0df;
+    background-image: url("{% static 'imgs/chat-wallpaper.svg' %}?v=4");
+    background-size: 360px 360px;
+    background-repeat: repeat;
+    overscroll-behavior: contain;
+  }
+
+  #conversationModal #modalEmailDate {
+    padding: 5px 12px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: normal;
+    text-transform: none;
+    box-shadow: none;
+  }
+
+  #modalEmailMessages > div {
+    gap: 10px;
+  }
+
+  #modalEmailMessages > div > div:not(.w-8) {
+    min-width: 0;
+    max-width: min(84%, 36rem);
+  }
+
+  #modalEmailMessages [class~="text-[10px]"] {
+    font-size: 11px;
+  }
+
+  #modalEmailMessages p {
+    overflow-wrap: anywhere;
+  }
+
+  #modalEmailMessages .conversation-intake-card {
+    border-color: #e0e7ff;
+    box-shadow: 0 2px 6px rgb(79 70 229 / 4%);
+  }
+
+  #modalEmailMessages .conversation-intake-card header {
+    background: #f5f5ff;
+  }
+
+  #conversationModal .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+
+  #conversationModal .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  @media (max-width: 1023px) {
+    .conversation-modal-switch {
+      display: flex;
+    }
+
+    .conversation-modal-body {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    #conversationModal #crmColumn {
+      border-right: 0;
+    }
+
+    #conversationModal .conversation-dialog[data-modal-view="chat"] #crmColumn,
+    #conversationModal .conversation-dialog[data-modal-view="details"] #chatColumn {
+      display: none;
+    }
+  }
+
+  @media (max-width: 639px) {
+    .conversation-modal-viewport {
+      padding: 8px;
+    }
+
+    .conversation-dialog {
+      height: calc(100dvh - 16px);
+      border-radius: 20px;
+    }
+
+    .conversation-modal-header {
+      gap: 10px;
+      padding: 16px;
+    }
+
+    .conversation-modal-heading {
+      gap: 10px;
+    }
+
+    .conversation-modal-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+    }
+
+    #conversationModal #modal-title {
+      font-size: 17px;
+    }
+
+    .conversation-modal-subtitle {
+      max-width: 200px;
+      font-size: 11px;
+    }
+
+    .conversation-modal-brand {
+      display: none;
+    }
+
+    .conversation-chat-heading {
+      padding: 14px 16px;
+    }
+
+    .conversation-history-navigation {
+      padding: 10px 16px 0;
+    }
+
+    #modalChatScroll {
+      padding: 16px;
+    }
+  }
+
+  /* En pantallas pequeñas los registros se acomodan sin desplazar la tabla. */
+  @media (max-width: 1023px) {
+    .conversations-table,
+    .conversations-table tbody {
+      display: block;
+      width: 100%;
+    }
+
+    .conversations-table colgroup,
+    .conversations-table thead {
+      display: none;
+    }
+
+    .conversations-table tbody tr {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .conversations-table td {
+      display: block;
+      min-width: 0;
+      white-space: normal;
+    }
+
+    .conversations-table td::before {
+      content: attr(data-label);
+      display: block;
+      margin-bottom: 0.375rem;
+      color: #6b7280;
+      font-size: 0.625rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .conversations-table .conversation-user,
+    .conversations-table .conversation-message,
+    .conversations-table .conversation-actions,
+    .conversations-table td[colspan] {
+      grid-column: 1 / -1;
+    }
+
+    .conversations-table td[colspan]::before {
+      display: none;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="conversations-page w-full min-w-0 min-h-screen panel-background py-6">
+  <div class="w-full min-w-0 space-y-8">
+    
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <div class="bg-amber-100 p-3 rounded-xl border border-amber-200 shadow-sm">
+          <svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="5" width="18" height="14" rx="2"/>
+            <path d="M3 7l9 6 9-6"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-2xl font-bold text-gray-900 tracking-tight">Gestión de conversaciones</h2>
+          <p class="text-sm text-gray-500">Supervisa y gestiona los mensajes entrantes.</p>
+        </div>
+      </div>
+      <div class="hidden sm:block">
+        <span class="px-3 py-1 bg-white border border-gray-200 rounded-full text-xs font-medium text-gray-500 shadow-sm">
+          Conversaciones recientes
+        </span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+        <p class="text-gray-500 text-sm font-medium">Total de conversaciones</p>
+        <p class="text-3xl font-extrabold text-gray-900 mt-1">{{ conversations_count }}</p>
+        <p class="mt-3 flex items-start gap-2 text-sm leading-relaxed text-gray-500">
+          <span class="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-slate-400" aria-hidden="true"></span>
+          <span>Número de conversaciones del periodo y los filtros seleccionados.</span>
+        </p>
+      </div>
+      
+      <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+        <div class="absolute right-0 top-0 h-full w-1 bg-green-500"></div>
+        <p class="text-gray-500 text-sm font-medium">Escalados</p>
+        <p class="text-3xl font-extrabold text-green-600 mt-1">{{ escalated_count|default:"0" }}</p>
+        <p class="mt-3 flex items-start gap-2 text-sm leading-relaxed text-gray-500">
+          <span class="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-green-500" aria-hidden="true"></span>
+          <span><span class="font-semibold text-green-700">Verde:</span> prospecto clasificado para continuar la atención con un asesor, según su última evaluación comercial.</span>
+        </p>
+      </div>
+      
+      <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+        <div class="absolute right-0 top-0 h-full w-1 bg-amber-500"></div>
+        <p class="text-gray-500 text-sm font-medium">En proceso</p>
+        <p class="text-3xl font-extrabold text-amber-600 mt-1">{{ in_progress_count|default:"0" }}</p>
+        <p class="mt-3 flex items-start gap-2 text-sm leading-relaxed text-gray-500">
+          <span class="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-amber-500" aria-hidden="true"></span>
+          <span><span class="font-semibold text-amber-700">Amarillo:</span> la conversación sigue en etapa de consulta y faltan datos para calificar la solicitud.</span>
+        </p>
+      </div>
+
+      <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+        <div class="absolute right-0 top-0 h-full w-1 bg-slate-400"></div>
+        <p class="text-gray-500 text-sm font-medium">Descartados</p>
+        <p class="text-3xl font-extrabold text-slate-700 mt-1">{{ discarded_count|default:"0" }}</p>
+        <div class="mt-3 space-y-2 text-sm leading-relaxed text-gray-500">
+          <p class="flex items-start gap-2">
+            <span class="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-red-500" aria-hidden="true"></span>
+            <span><span class="font-semibold text-red-700">Rojo:</span> no hay información suficiente para continuar, o se detectaron datos contradictorios, inválidos o de prueba.</span>
+          </p>
+          <p class="flex items-start gap-2">
+            <span class="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-slate-400" aria-hidden="true"></span>
+            <span><span class="font-semibold text-slate-700">Gris:</span> consulta de soporte, empleo, proveedores, alianzas u otros asuntos fuera del proceso de venta.</span>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    {% if messages %}
+      <div class="fixed top-6 right-6 z-50 space-y-3 max-w-sm w-full">
+        {% for message in messages %}
+          <div
+            data-message
+            class="flex items-start gap-3 bg-white border border-gray-100 rounded-2xl shadow-lg p-4">
+
+            <!-- Icono -->
+            <div class="flex-shrink-0">
+              {% if message.tags == "error" %}
+                <span class="text-red-500">⚠️</span>
+              {% elif message.tags == "warning" %}
+                <span class="text-amber-500">⚠️</span>
+              {% elif message.tags == "success" %}
+                <span class="text-emerald-500">✓</span>
+              {% else %}
+                <span class="text-blue-500">ℹ️</span>
+              {% endif %}
+            </div>
+
+            <!-- Texto -->
+            <div class="flex-1 text-sm text-gray-700 leading-snug">
+              {{ message }}
+            </div>
+
+            <!-- Botón cerrar -->
+            <button
+              onclick="closeMessage(this)"
+              class="text-gray-400 hover:text-gray-600 transition"
+              aria-label="Cerrar">
+              ✕
+            </button>
+
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+      
+      <div class="p-5 border-b border-gray-100 bg-gray-50/50">
+        <form method="get" class="flex flex-col gap-4">
+          <!-- Búsqueda: los dos campos van arriba, cada uno con la mitad
+               del ancho para que se lean completos. -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="relative group">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              </div>
+              <input type="text" name="search_email" value="{{ search_prospect }}" placeholder="Buscar correo, nombre o teléfono…" aria-label="Buscar por correo, nombre o teléfono" aria-describedby="conversation-search-help"
+                     class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all shadow-sm">
+            </div>
+            <div class="relative group">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+              </div>
+              <input type="text" name="search_message" value="{{ request.GET.search_message|default_if_none:'' }}" placeholder="Buscar en los mensajes…"
+                     class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all shadow-sm">
+            </div>
+          </div>
+
+          <p id="conversation-search-help" class="text-xs text-gray-500">
+            Los correos también se buscan en los mensajes. La búsqueda respeta el periodo y los demás filtros seleccionados.
+          </p>
+
+          <!-- Filtros y botón: segundo renglón. flex-wrap para que las
+               opciones bajen solas en pantallas medianas en vez de
+               aplastarse. -->
+          <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
+
+            <!-- Source -->
+            <select
+              name="source"
+              class="block w-full sm:w-auto pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-xl shadow-sm bg-white cursor-pointer hover:bg-gray-50 transition"
+            >
+              <option value="all" {% if source == 'all' %}selected{% endif %}>
+                Todos los canales
+              </option>
+
+              <option value="whatsapp" {% if source == 'whatsapp' %}selected{% endif %}>
+                WhatsApp
+              </option>
+
+              <option value="web" {% if source == 'web' %}selected{% endif %}>
+                chatweb
+              </option>
+
+              <option value="form" {% if source == 'form' %}selected{% endif %}>
+                Formulario
+              </option>
+
+              <option value="email" {% if source == 'email' %}selected{% endif %}>
+                Correo
+              </option>
+
+              <option value="messenger" {% if source == 'messenger' %}selected{% endif %}>
+                Messenger
+              </option>
+
+              <option value="linkedin" {% if source == 'linkedin' %}selected{% endif %}>
+                LinkedIn
+              </option>
+
+              <option value="instagram" {% if source == 'instagram' %}selected{% endif %}>
+                Instagram
+              </option>
+            </select>
+
+            <!-- Clasificación por el último semáforo de la conversación -->
+            <select
+              name="semaforo"
+              aria-label="Filtrar por estado"
+              class="block w-full sm:w-auto pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-xl shadow-sm bg-white cursor-pointer hover:bg-gray-50 transition"
+            >
+              {% include 'prospects/_state_filter_options.html' %}
+            </select>
+
+            <!-- UTM source -->
+            <select
+              name="utm_source"
+              class="block w-full sm:w-auto pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-xl shadow-sm bg-white cursor-pointer hover:bg-gray-50 transition"
+            >
+              <option value="">Todas las fuentes UTM</option>
+              {% for s in utm_sources %}
+                <option value="{{ s }}" {% if utm_source == s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+
+            <!-- UTM campaign -->
+            <select
+              name="utm_campaign"
+              class="block w-full sm:w-auto pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-xl shadow-sm bg-white cursor-pointer hover:bg-gray-50 transition"
+            >
+              <option value="">Todas las campañas UTM</option>
+              {% for c in utm_campaigns %}
+                <option value="{{ c }}" {% if utm_campaign == c %}selected{% endif %}>{{ c }}</option>
+              {% endfor %}
+            </select>
+
+            <!-- Traffic origin: es el referrer y puede llegar de varios
+                 tipos, así que va como combobox con los valores distintos
+                 que hay en la base. -->
+            <select
+              name="traffic_origin"
+              class="block w-full sm:w-auto pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-xl shadow-sm bg-white cursor-pointer hover:bg-gray-50 transition"
+            >
+              <option value="">Todos los orígenes de tráfico</option>
+
+              {% for o in traffic_origins %}
+                <option value="{{ o }}" {% if traffic_origin == o %}selected{% endif %}>{{ o }}</option>
+              {% empty %}
+                <option value="" disabled>Aún no hay datos</option>
+              {% endfor %}
+            </select>
+
+            <!-- Interval -->
+            <select
+              name="interval"
+              id="period-selector"
+              class="block w-full sm:w-auto pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-xl shadow-sm bg-white cursor-pointer hover:bg-gray-50 transition"
+            >
+              <option value="today" {% if interval == 'today' %}selected{% endif %}>
+                Hoy
+              </option>
+
+              <option value="week" {% if interval == 'week' %}selected{% endif %}>
+                Esta semana
+              </option>
+
+              <option value="month" {% if interval == 'month' %}selected{% endif %}>
+                Este mes
+              </option>
+
+              <option value="last_month" {% if interval == 'last_month' %}selected{% endif %}>
+                Mes pasado
+              </option>
+
+              <option value="year" {% if interval == 'year' %}selected{% endif %}>
+                Este año
+              </option>
+
+              <option value="custom" {% if interval == 'custom' %}selected{% endif %}>
+                Rango personalizado…
+              </option>
+            </select>
+
+            <!-- Las dos fechas solo aparecen con "Custom range". Van en el
+                 mismo form, asi que las aplica el boton Filter de siempre. -->
+            <div
+              id="custom-range"
+              class="flex flex-wrap items-center gap-2 {% if interval != 'custom' %}hidden{% endif %}"
+            >
+              <input
+                type="date"
+                name="date_from"
+                value="{{ date_from_input }}"
+                class="block w-full sm:w-auto px-3 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-xl shadow-sm bg-white"
+              >
+
+              <span class="text-gray-400 text-sm">—</span>
+
+              <input
+                type="date"
+                name="date_to"
+                value="{{ date_to_input }}"
+                class="block w-full sm:w-auto px-3 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-xl shadow-sm bg-white"
+              >
+            </div>
+
+            <button
+              type="submit"
+              class="inline-flex items-center justify-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all transform hover:-translate-y-0.5 sm:ml-auto"
+            >
+              Filtrar
+            </button>
+          </div>
+          <!-- Modo: las conversaciones reales y las de los agentes de pruebas
+               viven en tablas distintas y nunca se mezclan. Elegir un lado
+               no recarga nada: se aplica al darle Filtrar, con los demás
+               filtros. -->
+          <fieldset class="space-y-2">
+            <legend class="sr-only">Tipo de conversaciones</legend>
+            <div class="grid w-full grid-cols-2 rounded-xl border border-gray-200 bg-white p-1 shadow-sm">
+              <label class="cursor-pointer">
+                <input type="radio" name="mode" value="production" class="peer sr-only" {% if mode == 'production' %}checked{% endif %}>
+                <span class="block text-center px-4 py-2 text-sm font-semibold rounded-lg transition-colors text-gray-600 hover:bg-gray-100 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-500">
+                  Producción
+                </span>
+              </label>
+              <label class="cursor-pointer">
+                <input type="radio" name="mode" value="shadow_testing" class="peer sr-only" {% if mode == 'shadow_testing' %}checked{% endif %}>
+                <span class="block text-center px-4 py-2 text-sm font-semibold rounded-lg transition-colors text-gray-600 hover:bg-gray-100 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-500">
+                  Pruebas
+                </span>
+              </label>
+            </div>
+            {% if mode != 'shadow_testing' %}
+              <p class="text-xs text-gray-500">
+                Mostrando conversaciones reales atendidas por el agente de producción.
+              </p>
+            {% endif %}
+          </fieldset>
+        </form>
+      </div>
+
+      <div class="w-full min-w-0">
+        <table class="conversations-table w-full table-fixed divide-y divide-gray-200">
+          <colgroup>
+            <col style="width: 18%">
+            <col>
+            <col style="width: 6rem">
+            <col style="width: 10%">
+            <col style="width: 8rem">
+            <col style="width: 7rem">
+            <col style="width: 3.5rem">
+          </colgroup>
+          <thead class="bg-gray-50">
+            <tr>
+              <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Prospecto</th>
+              <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Último mensaje</th>
+              <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Rol</th>
+              <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Canal</th>
+              <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
+              <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha</th>
+              <th scope="col" class="relative px-6 py-4">
+                <span class="sr-only">Acciones</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            {% for conv in page_obj %}
+            <tr class="{% if mode == 'shadow_testing' %}bg-gray-100 hover:bg-gray-200{% else %}hover:bg-gray-50{% endif %} transition-colors duration-150 group">
+              <!-- Prospecto -->
+              <td data-label="Prospecto" class="conversation-user px-6 py-4">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0 h-10 w-10">
+                    <div class="h-10 w-10 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm border border-indigo-200">
+                      {{ conv.contact_name|default:"?"|slice:":1"|upper }}
+                    </div>
+                  </div>
+
+                  <div class="ml-3 min-w-0">
+                    <div class="text-sm font-medium text-gray-900">
+                      {{ conv.contact_name|default:"Sin nombre" }}
+                    </div>
+
+                    <div class="text-sm text-gray-500">
+                      {{ conv.contact_phone|default:"—" }}
+                    </div>
+                  </div>
+                </div>
+              </td>
+
+              <!-- last message -->
+              <td data-label="Último mensaje" class="conversation-message px-6 py-4">
+                <span class="block text-xs leading-relaxed">
+                    {{ conv.last_message|truncatechars:70|default:"—" }}
+                </span>
+              </td>
+
+              <!-- role -->
+              <td data-label="Rol" class="px-6 py-4">
+                <div class="text-sm text-gray-900">
+                    {% if conv.last_role == 'user' %}Prospecto{% elif conv.last_role == 'assistant' %}{{ conv.assistant_name|default:conversation_agent_name|default:"Sofía" }}{% else %}—{% endif %}
+                </div>
+              </td>
+
+              <!-- source -->
+              <!-- source -->
+<td data-label="Canal" class="px-6 py-4">
+  <div class="text-sm text-gray-900">
+      {% if conv.source == 'web' %}chatweb{% elif conv.source == 'email' %}Correo{% elif conv.source == 'form' %}Formulario{% else %}{{ conv.source }}{% endif %}
+  </div>
+
+  {% if conv.utm_source or conv.utm_campaign or conv.traffic_origin %}
+    <div
+      class="text-xs text-gray-500 mt-1 leading-tight"
+      title="fuente: {{ conv.utm_source|default:'—' }}&#10;medio: {{ conv.utm_medium|default:'—' }}&#10;campaña: {{ conv.utm_campaign|default:'—' }}&#10;contenido: {{ conv.utm_content|default:'—' }}&#10;término: {{ conv.utm_term|default:'—' }}&#10;origen: {{ conv.traffic_origin|default:'—' }}">
+
+      {% if conv.utm_source %}
+        {{ conv.utm_source }}{% if conv.utm_medium %} · {{ conv.utm_medium }}{% endif %}
+      {% endif %}
+
+      {% if conv.utm_campaign %}
+        <div class="font-semibold text-indigo-600">{{ conv.utm_campaign }}</div>
+      {% endif %}
+
+      {% if conv.traffic_origin %}
+        <div class="text-gray-400">{{ conv.traffic_origin }}</div>
+      {% endif %}
+    </div>
+  {% endif %}
+</td>
+
+              <!-- Semáforo del último análisis, sin depender de open/closed -->
+              <td data-label="Estado" class="px-6 py-4">
+                {% if conv.semaforo %}
+                  <span class="inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-full text-xs font-medium ring-1 {% if conv.semaforo == 'verde' %}bg-green-50 text-green-700 ring-green-600/20{% elif conv.semaforo == 'amarillo' %}bg-amber-50 text-amber-700 ring-amber-600/20{% elif conv.semaforo == 'rojo' %}bg-red-50 text-red-700 ring-red-600/20{% else %}bg-slate-100 text-slate-600 ring-slate-500/20{% endif %}">
+                    <span class="mr-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-current" aria-hidden="true"></span>
+                    {% if conv.semaforo == 'verde' %}Escalado{% elif conv.semaforo == 'amarillo' %}En proceso{% else %}Descartado{% endif %}
+                  </span>
+                {% endif %}
+              </td>
+
+              <!-- Date -->
+              <td data-label="Fecha" class="px-6 py-4 text-sm text-gray-500">
+                {{ conv.created_at|date:"d M Y" }}
+              </td>
+
+              <!-- Actions -->
+              <td data-label="Acciones" class="conversation-actions px-6 py-4 text-right text-sm font-medium">
+                <button
+                  type="button"
+                  class="open-email-history-modal text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 p-2 rounded-lg transition-colors"
+                  data-id="{{ conv.id }}"
+                  title="Ver conversación completa">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                </button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="7" class="px-6 py-10 text-center text-gray-500 bg-gray-50/50">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+                <p class="mt-2 text-sm font-medium text-gray-900">No se encontraron conversaciones</p>
+                <p class="mt-1 text-sm text-gray-500">Revisa el periodo y los demás filtros. El periodo «Hoy» solo muestra conversaciones creadas hoy.</p>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6 flex items-center justify-between">
+
+        <div class="flex-1 flex justify-between sm:hidden">
+          {% if page_obj.has_previous %}
+            <a href="{% querystring page=page_obj.previous_page_number %}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+              Anterior
+            </a>
+          {% else %}
+            <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-300 bg-gray-50 cursor-default">Anterior</span>
+          {% endif %}
+
+          {% if page_obj.has_next %}
+            <a href="{% querystring page=page_obj.next_page_number %}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+              Siguiente
+            </a>
+          {% else %}
+            <span class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-300 bg-gray-50 cursor-default">Siguiente</span>
+          {% endif %}
+        </div>
+
+        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+          <div>
+            <p class="text-sm text-gray-700">
+              Mostrando <span class="font-medium">{{ page_obj.start_index }}</span> a <span class="font-medium">{{ page_obj.end_index }}</span> de <span class="font-medium">{{ page_obj.paginator.count }}</span> resultados
+            </p>
+          </div>
+
+          <div>
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Paginación">
+              <a href="{% querystring page=1 %}"
+                class="{% if page_obj.number == 1 %}pointer-events-none opacity-50 bg-gray-50{% else %}bg-white hover:bg-gray-50{% endif %} relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 text-sm font-medium text-gray-500">
+                <span class="sr-only">Primera</span>
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>
+              </a>
+
+              <a href="{% if page_obj.has_previous %}{% querystring page=page_obj.previous_page_number %}{% else %}#{% endif %}"
+                class="{% if not page_obj.has_previous %}pointer-events-none opacity-50 bg-gray-50{% else %}bg-white hover:bg-gray-50{% endif %} relative inline-flex items-center px-2 py-2 border border-gray-300 text-sm font-medium text-gray-500">
+                <span class="sr-only">Anterior</span>
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+              </a>
+
+              <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-indigo-50 text-sm font-bold text-indigo-600 z-10">
+                {{ page_obj.number }}
+              </span>
+
+              <a href="{% if page_obj.has_next %}{% querystring page=page_obj.next_page_number %}{% else %}#{% endif %}"
+                class="{% if not page_obj.has_next %}pointer-events-none opacity-50 bg-gray-50{% else %}bg-white hover:bg-gray-50{% endif %} relative inline-flex items-center px-2 py-2 border border-gray-300 text-sm font-medium text-gray-500">
+                <span class="sr-only">Siguiente</span>
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+              </a>
+
+              <a href="{% querystring page=page_obj.paginator.num_pages %}"
+                class="{% if page_obj.number == page_obj.paginator.num_pages %}pointer-events-none opacity-50 bg-gray-50{% else %}bg-white hover:bg-gray-50{% endif %} relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 text-sm font-medium text-gray-500">
+                <span class="sr-only">Última</span>
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+              </a>
+            </nav>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div
+  id="conversationModal"
+  class="hidden fixed inset-0 z-50 overflow-y-auto"
+  aria-labelledby="modal-title"
+  role="dialog"
+  aria-modal="true"
+>
+  <div class="conversation-modal-viewport">
+
+    <!-- Fondo -->
+    <div
+      class="conversation-modal-backdrop"
+      aria-hidden="true"
+      onclick="closeModal()"
+    ></div>
+
+    <!-- Contenedor -->
+    <div id="conversationDialog" class="conversation-dialog" data-modal-view="chat" tabindex="-1">
+
+      <!-- Header -->
+      <div class="conversation-modal-header relative">
+
+
+        <div class="conversation-modal-heading">
+          <div class="conversation-modal-icon">
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+              ></path>
+            </svg>
+          </div>
+
+          <div>
+            <h3
+              id="modal-title"
+              class="text-lg leading-6 font-semibold"
+            >
+              Conversación
+            </h3>
+
+            <p class="conversation-modal-subtitle">
+              Historial y análisis del prospecto
+            </p>
+          </div>
+        </div>
+
+        <!-- Badge de conversación de pruebas: centrado en la cabecera
+             desde tablet; en celular queda entre el título y las acciones. -->
+        <span
+          id="modalTestBadge"
+          class="hidden inline-flex items-center rounded-full bg-gray-200 px-5 py-1.5 text-base font-bold tracking-wide text-gray-700 ring-1 ring-gray-300 shadow-sm sm:absolute sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2"
+        >
+          Prueba
+        </span>
+
+        <div class="conversation-modal-actions">
+          <span class="conversation-modal-brand">
+            <svg class="w-4 h-4 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+              <path d="m12 3 2.3 6.7L21 12l-6.7 2.3L12 21l-2.3-6.7L3 12l6.7-2.3L12 3Z" stroke-linejoin="round"/>
+            </svg>
+            <span id="modalBrandAgentName">{{ conversation_agent_name|default:"Sofía" }}</span>
+          </span>
+          <button
+          id="conversationModalClose"
+          type="button"
+          onclick="closeModal()"
+          class="conversation-modal-close"
+          aria-label="Cerrar conversación"
+          title="Cerrar (Esc)"
+        >
+          <svg
+            class="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            ></path>
+          </svg>
+        </button>
+        </div>
+      </div>
+
+      <nav class="conversation-modal-switch" aria-label="Vista del modal">
+        <button type="button" data-modal-view-button="chat" aria-controls="chatColumn" aria-pressed="true">Conversación</button>
+        <button type="button" data-modal-view-button="details" aria-controls="crmColumn" aria-pressed="false">Detalles</button>
+      </nav>
+
+      <!-- Cuerpo -->
+      <div class="conversation-modal-body">
+
+        <!-- ====================================== -->
+        <!-- IZQUIERDA: ANÁLISIS CRM -->
+        <!-- ====================================== -->
+
+        <div
+          id="crmColumn"
+          class="custom-scrollbar"
+          tabindex="0"
+          aria-label="Detalles y análisis del prospecto"
+        >
+          <!-- Datos del análisis -->
+          <div
+            id="crmPanel"
+            class="hidden space-y-4"
+          >
+            <!-- Encabezado del análisis -->
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-semibold text-slate-700">
+                Análisis de {{ conversation_agent_name|default:"Sofía" }}
+              </h4>
+            </div>
+
+            <!-- Score comercial -->
+            <div class="conversation-detail-card conversation-score-card">
+              <div>
+                <p class="text-xs text-slate-500 mb-2">Puntuación comercial</p>
+                <p id="crmScore"></p>
+              </div>
+              <div class="conversation-score-icon" aria-hidden="true">
+                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 18V6m0 12h16M8 14l4-4 4 2 4-6M16 6h4v4"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Situación comercial y explicación -->
+            <div class="conversation-detail-card">
+              <p class="text-xs font-medium text-slate-500 mb-3">Situación del prospecto</p>
+              <div class="mb-3">
+                <span id="crmInteractionProfile" title="Perfil de interacción" class="inline-flex max-w-full items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset bg-slate-100 text-slate-600 ring-slate-500/20">No identificado</span>
+              </div>
+              <div class="flex items-start gap-3">
+                <span id="crmProspectingIndicator" class="mt-1.5 h-2.5 w-2.5 rounded-full flex-shrink-0" aria-hidden="true"></span>
+                <p
+                  class="min-w-0 text-sm text-slate-700 leading-relaxed whitespace-pre-line"
+                ><span id="crmProspectingStatus" class="font-semibold text-slate-900"></span><span id="crmProspectingReason"></span></p>
+              </div>
+            </div>
+
+            <!-- Datos del Contacto -->
+            <div class="conversation-detail-card conversation-contact-card space-y-3">
+              <p class="text-xs text-gray-400 uppercase tracking-wide mb-2">
+                Contacto
+              </p>
+
+              <div>
+                <p class="text-xs text-gray-500 mb-0.5">Nombre</p>
+                <p id="crmContactoNombre" class="text-sm font-medium text-gray-800">—</p>
+              </div>
+
+              <div>
+                <p class="text-xs text-gray-500 mb-0.5">Empresa</p>
+                <p id="crmContactoEmpresa" class="text-sm font-medium text-gray-800">—</p>
+              </div>
+
+              <div>
+                <p class="text-xs text-gray-500 mb-0.5">Correo</p>
+                <p id="crmContactoCorreo" class="text-sm font-mono text-indigo-600 break-all">—</p>
+              </div>
+
+              <div>
+                <p class="text-xs text-gray-500 mb-0.5">Teléfono</p>
+                <p id="crmContactoTelefono" class="text-sm font-medium text-gray-800 break-all">—</p>
+              </div>
+            </div>
+
+            <!-- Resumen -->
+            <div class="space-y-4 text-sm">
+
+              <div class="conversation-detail-card">
+                <p class="text-xs text-indigo-400 uppercase tracking-wide mb-1">
+                  Resumen de conversación
+                </p>
+
+                <p
+                  id="crmResumen"
+                  class="text-gray-700 leading-relaxed"
+                ></p>
+              </div>
+
+              <!-- Resumen de la empresa -->
+              <div class="conversation-detail-card">
+                <p class="text-xs text-blue-400 uppercase tracking-wide mb-1">
+                  Información investigada de la empresa
+                </p>
+
+                <p
+                  id="crmEmpresaResumen"
+                  class="text-gray-700 leading-relaxed"
+                ></p>
+              </div>
+
+              <div class="conversation-detail-card space-y-4">
+              <!-- Unidad de negocio -->
+              <div>
+                <p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">
+                  Unidad de negocio
+                </p>
+
+                <p
+                  id="crmUnidad"
+                  class="text-gray-800 font-medium"
+                ></p>
+              </div>
+
+              <!-- Perfil psicológico -->
+              <div>
+                <p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">
+                  Perfil psicológico
+                </p>
+
+                <p
+                  id="crmPerfil"
+                  class="text-gray-800 font-medium"
+                ></p>
+              </div>
+
+              <!-- Guía de negociación -->
+              <div>
+                <p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">
+                  Guía de negociación
+                </p>
+
+                <p
+                  id="crmGuia"
+                  class="text-gray-700 leading-relaxed"
+                ></p>
+              </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sin análisis -->
+          <div
+            id="crmEmpty"
+            class="conversation-empty-analysis hidden flex flex-col items-center justify-center text-slate-400 text-center"
+          >
+            <svg
+              class="w-10 h-10 mb-2 opacity-50"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+              ></path>
+            </svg>
+
+            <p class="text-sm">
+              Sin análisis disponible por el momento
+            </p>
+          </div>
+
+          <!-- ====================================== -->
+          <!-- ATRIBUCIÓN (UTMs) -->
+          <!-- ====================================== -->
+          <!-- Independiente del análisis CRM: se muestra aunque la IA
+               no haya dejado nada, porque es de la conversación. -->
+          <div
+            id="attributionPanel"
+            class="hidden p-6 pt-0 space-y-4"
+          >
+            <h4 class="text-sm font-bold text-gray-700 uppercase tracking-wide">
+              Atribución
+            </h4>
+
+            <div class="conversation-detail-card grid grid-cols-2 gap-x-4 gap-y-3">
+              <div class="col-span-2">
+                <p class="text-xs text-gray-500 mb-0.5">Canal</p>
+                <p id="attrChannel" class="text-sm font-medium text-gray-800">—</p>
+              </div>
+
+              <div>
+                <p class="text-xs text-gray-500 mb-0.5">Fuente UTM</p>
+                <p id="attrSource" class="text-sm font-medium text-gray-800 break-all">—</p>
+              </div>
+
+              <div>
+                <p class="text-xs text-gray-500 mb-0.5">Medio UTM</p>
+                <p id="attrMedium" class="text-sm font-medium text-gray-800 break-all">—</p>
+              </div>
+
+              <div class="col-span-2">
+                <p class="text-xs text-gray-500 mb-0.5">Campaña UTM</p>
+                <p id="attrCampaign" class="text-sm font-medium text-indigo-600 break-all">—</p>
+              </div>
+
+              <div>
+                <p class="text-xs text-gray-500 mb-0.5">Contenido UTM</p>
+                <p id="attrContent" class="text-sm font-medium text-gray-800 break-all">—</p>
+              </div>
+
+              <div>
+                <p class="text-xs text-gray-500 mb-0.5">Término UTM</p>
+                <p id="attrTerm" class="text-sm font-medium text-gray-800 break-all">—</p>
+              </div>
+
+              <div class="col-span-2">
+                <p class="text-xs text-gray-500 mb-0.5">Origen del tráfico</p>
+                <p id="attrOrigin" class="text-sm font-medium text-gray-800 break-all">—</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ====================================== -->
+        <!-- DERECHA: HISTORIAL DEL CHAT -->
+        <!-- ====================================== -->
+
+        <div
+          id="chatColumn"
+          aria-label="Conversación con el prospecto"
+        >
+          <div class="conversation-chat-heading">
+            <h4>Historial de mensajes</h4>
+            <div class="conversation-chat-legend" aria-label="Participantes">
+              <span>
+                <span class="conversation-participant-avatar conversation-participant-avatar--prospect" aria-hidden="true">P</span>
+                Prospecto
+              </span>
+              <span>
+                <span id="conversationAgentInitial" class="conversation-participant-avatar conversation-participant-avatar--assistant" aria-hidden="true">{{ conversation_agent_name|default:"Sofía"|slice:":1"|upper }}</span>
+                <span id="conversationAgentName">{{ conversation_agent_name|default:"Sofía" }}</span>
+              </span>
+            </div>
+          </div>
+          <nav class="conversation-history-navigation" aria-label="Navegar conversaciones de esta página">
+            <button id="conversationPrevious" type="button" aria-label="Ver conversación anterior" title="Anterior" disabled>
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m15 18-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <span id="conversationPosition" role="status" aria-live="polite" title="Conversaciones de esta página">—</span>
+            <button id="conversationNext" type="button" aria-label="Ver conversación siguiente" title="Siguiente" disabled>
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </nav>
+          <div id="modalChatScroll" class="custom-scrollbar" tabindex="0" aria-label="Historial de mensajes">
+
+            <!-- Loader -->
+            <div
+              id="modalEmailLoader"
+              class="hidden h-full flex flex-col items-center justify-center text-gray-400"
+            >
+              <svg
+                class="animate-spin h-10 w-10 text-indigo-500 mb-3"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v8z"
+                ></path>
+              </svg>
+
+              <span class="text-sm font-medium">
+                Cargando mensajes…
+              </span>
+            </div>
+
+            <!-- Fecha -->
+            <div
+              id="modalEmailDateContainer"
+              class="flex justify-center mb-6 hidden"
+            >
+              <span
+                id="modalEmailDate"
+                class="bg-gray-200 text-gray-600 text-xs font-bold px-3 py-1 rounded-full shadow-sm uppercase tracking-wide"
+              ></span>
+            </div>
+
+            <!-- Mensajes -->
+            <div
+              id="modalEmailMessages"
+              class="space-y-6"
+              role="log"
+              aria-label="Mensajes de la conversación"
+            ></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+// Muestra u oculta las dos fechas segun el periodo elegido. Aqui no se
+// envia nada solo: el formulario ya tiene su boton Filter.
+(function () {
+    var selector = document.getElementById('period-selector');
+    var rango = document.getElementById('custom-range');
+
+    if (!selector || !rango) return;
+
+    selector.addEventListener('change', function () {
+        rango.classList.toggle('hidden', this.value !== 'custom');
+
+        if (this.value === 'custom') {
+            rango.querySelector('input').focus();
+        }
+    });
+})();
+
+function closeMessage(btn) {
+    const message = btn.closest('[data-message]');
+    if (!message) return;
+
+    message.classList.add('fade-out');
+
+    setTimeout(() => {
+      message.remove();
+    }, 350);
+}
+
+let conversationModalTrigger = null;
+let conversationBodyOverflow = '';
+let conversationRequestController = null;
+
+function setConversationModalView(view) {
+  const selected = view === 'details' ? 'details' : 'chat';
+  document.getElementById('conversationDialog').dataset.modalView = selected;
+  document.querySelectorAll('[data-modal-view-button]').forEach(button => {
+    button.setAttribute('aria-pressed', String(button.dataset.modalViewButton === selected));
+  });
+}
+
+document.querySelectorAll('[data-modal-view-button]').forEach(button => {
+  button.addEventListener('click', () => setConversationModalView(button.dataset.modalViewButton));
+});
+
+// El foco permanece dentro del modal y vuelve al registro al cerrarlo.
+document.getElementById('conversationModal').addEventListener('keydown', event => {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeModal();
+    return;
+  }
+
+  if (event.key !== 'Tab') return;
+
+  const dialog = document.getElementById('conversationDialog');
+  const focusable = Array.from(dialog.querySelectorAll('button:not([disabled]), a[href], [tabindex="0"]'))
+    .filter(element => element.getClientRects().length);
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+
+  if (document.activeElement === dialog
+      || (event.shiftKey && document.activeElement === first)
+      || (!event.shiftKey && document.activeElement === last)) {
+    event.preventDefault();
+    (event.shiftKey ? last : first)?.focus();
+  }
+});
+
+function closeModal() {
+  conversationRequestController?.abort();
+  conversationRequestController = null;
+  $('#conversationModal').addClass('hidden');
+  document.body.style.overflow = conversationBodyOverflow;
+  if (conversationModalTrigger?.isConnected) conversationModalTrigger.focus();
+}
+
+// Escapa HTML para evitar XSS (los mensajes vienen de usuarios externos)
+function escapeHtml(s) {
+  return $('<div>').text(s == null ? '' : s).html();
+}
+
+// Explica la evaluación comercial sin confundir el color con un escalamiento real.
+function getProspectingSummary(crm) {
+  const text = value => typeof value === 'string' ? value.trim() : '';
+  const isTrue = value => value === true || text(value).toLowerCase() === 'true';
+  const color = text(crm.semaforo).toLowerCase();
+  const stage = text(crm.conversation_state).toLowerCase();
+  const escalated = isTrue(crm.escalar_a_humano) || isTrue(crm.is_qualified);
+  const motive = text(crm.motivo_semaforo);
+  const escalationMotive = text(crm.motivo_escalamiento);
+
+  if (escalated) {
+    return {
+      status: 'Escalado',
+      reason: escalationMotive || motive
+        || 'La solicitud requiere atención de un especialista para continuar la negociación.',
+      tone: 'bg-green-500',
+    };
+  }
+
+  const evaluations = {
+    amarillo: {
+      status: 'En proceso de prospección',
+      reason: 'El prospecto sigue consultando y aún falta que comparta los datos necesarios para calificar su solicitud.',
+      tone: 'bg-amber-500',
+    },
+    rojo: {
+      status: 'No escalado',
+      reason: 'Falta información para continuar la negociación o hay datos contradictorios que deben aclararse.',
+      tone: 'bg-red-500',
+    },
+    gris: {
+      status: 'No escalado',
+      reason: 'La conversación terminó sin derivación a un especialista.',
+      tone: 'bg-slate-400',
+    },
+    verde: {
+      status: 'Pendiente de escalamiento',
+      reason: 'La evaluación comercial es favorable, pero aún no se ha confirmado la derivación a un especialista.',
+      tone: 'bg-green-500',
+    },
+  };
+  const evaluation = evaluations[color];
+  if (evaluation) {
+    return { ...evaluation, reason: motive || escalationMotive || evaluation.reason };
+  }
+
+  if (['enrutamiento', 'closed', 'cerrada'].includes(stage)) {
+    return {
+      status: 'No escalado',
+      reason: motive || escalationMotive || 'El flujo autónomo terminó sin un escalamiento registrado.',
+      tone: 'bg-slate-400',
+    };
+  }
+
+  return {
+    status: stage ? 'En proceso de prospección' : 'Evaluación pendiente',
+    reason: motive || escalationMotive || 'Falta completar la evaluación comercial para determinar el siguiente paso.',
+    tone: stage ? 'bg-amber-500' : 'bg-slate-400',
+  };
+}
+
+// Etiqueta y color propios de cada perfil que genera el análisis de Sofía.
+function getInteractionProfileBadge(value) {
+  const key = typeof value === 'string'
+    ? value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s-]+/g, '_')
+    : '';
+  const profiles = {
+    pregunton: {
+      label: 'Preguntón', tone: 'bg-blue-50 text-blue-700 ring-blue-600/20',
+    },
+    explorador: {
+      label: 'Explorador', tone: 'bg-cyan-50 text-cyan-700 ring-cyan-600/20',
+    },
+    comparador: {
+      label: 'Comparador', tone: 'bg-violet-50 text-violet-700 ring-violet-600/20',
+    },
+    interesado: {
+      label: 'Interesado', tone: 'bg-teal-50 text-teal-700 ring-teal-600/20',
+    },
+    comprador_decidido: {
+      label: 'Comprador decidido', tone: 'bg-green-50 text-green-700 ring-green-600/20',
+    },
+    indeciso: {
+      label: 'Indeciso', tone: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+    },
+    regateador: {
+      label: 'Regateador', tone: 'bg-orange-50 text-orange-700 ring-orange-600/20',
+    },
+    poco_interactivo: {
+      label: 'Poco interactivo', tone: 'bg-rose-50 text-rose-700 ring-rose-600/20',
+    },
+    no_identificado: {
+      label: 'No identificado', tone: 'bg-slate-100 text-slate-600 ring-slate-500/20',
+    },
+  };
+  return Object.prototype.hasOwnProperty.call(profiles, key)
+    ? profiles[key] : profiles.no_identificado;
+}
+
+// Lee los formatos de captura existentes sin modificar el historial guardado.
+function parseInitialMessage(content, source) {
+  const formats = [
+    {
+      source: 'web',
+      title: 'chatweb',
+      pattern: /^\s*(?:medio_preferido\s*:\s*(?<preferred>[^,]*)(?:,\s*telefono\s*:\s*(?<phone>[^,]*))?)?\s*,\s*correo\s*:\s*(?<email>.*?),\s*nombre\s*:\s*(?<name>.*?),\s*empresa\s*:\s*(?<company>.*?),\s*unidad_negocio\s*:\s*(?<unit>.*?),\s*mensaje\s*:\s*(?<message>[\s\S]*)$/is,
+    },
+    {
+      source: 'email',
+      title: 'Correo',
+      pattern: /^\s*correo\s*:\s*(?<email>.*?)\.\s*cuerpo\s*:\s*(?<message>[\s\S]*)$/is,
+    },
+    {
+      source: 'form',
+      title: 'Formulario',
+      pattern: /\bname\s*:\s*(?<name>.*?),\s*email\s*:\s*(?<email>.*?),\s*phone\s*:\s*(?<phone>.*?),\s*subject\s*:\s*(?<subject>.*?),\s*message\s*:\s*(?<message>[\s\S]*)$/is,
+    },
+  ];
+  const channel = String(source || '').trim().toLowerCase();
+  const format = formats.find(item => item.source === channel)
+    || (!channel && formats.find(item => item.pattern.test(content)));
+
+  if (!format) return null;
+
+  const match = format.pattern.exec(content);
+
+  // Un mensaje antiguo con otro formato se conserva completo como consulta.
+  if (!match) {
+    return { title: format.title, fields: [], message: content };
+  }
+
+  const values = match.groups;
+  // Los formularios antiguos pueden traer una instrucción interna antes de name.
+  // En el modal solo interesa el mensaje; el contacto ya tiene su propio panel.
+  if (format.source === 'form') {
+    return { title: format.title, fields: [], message: values.message };
+  }
+
+  const preferred = String(values.preferred || '').trim().toLowerCase();
+  const contactMethods = { whatsapp: 'WhatsApp', correo: 'Correo electrónico' };
+  values.preferred = contactMethods[preferred] || values.preferred;
+
+  const fields = [
+    { key: 'name', label: 'Nombre' },
+    { key: 'company', label: 'Empresa' },
+    { key: 'email', label: 'Correo electrónico' },
+    { key: 'phone', label: 'Teléfono' },
+    { key: 'unit', label: 'Unidad de negocio' },
+    { key: 'preferred', label: 'Medio de contacto preferido' },
+    { key: 'subject', label: 'Asunto', fullWidth: true },
+  ].map(field => ({
+    ...field,
+    value: String(values[field.key] || '').trim(),
+  })).filter(field => field.value);
+
+  return {
+    title: format.title,
+    fields: fields,
+    message: values.message,
+  };
+}
+
+function renderInitialMessageCard(message, time, crm) {
+  const contact = crm?.contacto || {};
+  const sidebarFields = {
+    name: contact.nombre,
+    company: contact.empresa,
+    email: contact.correo,
+    phone: contact.telefono || crm?.phone || crm?.telefono,
+    unit: crm?.unidad_negocio_detectada,
+  };
+
+  // Se conservan los datos de captura que aún no aparecen en el panel izquierdo.
+  const visibleFields = message.fields.filter(field =>
+    !String(sidebarFields[field.key] ?? '').trim()
+  );
+  const fields = visibleFields.map(field => `
+    <div class="min-w-0 ${field.fullWidth || visibleFields.length === 1 ? 'sm:col-span-2' : ''}">
+      <dt class="text-[11px] font-medium text-gray-500 mb-1">${escapeHtml(field.label)}</dt>
+      <dd data-contact-field="${field.key}" class="text-sm font-medium text-gray-900 whitespace-pre-wrap [overflow-wrap:anywhere]">${escapeHtml(field.value)}</dd>
+    </div>
+  `).join('');
+
+  return `
+    <div class="flex justify-start items-end gap-2">
+      <div class="flex flex-col space-y-1 w-full min-w-0 max-w-xl">
+        <article class="conversation-intake-card bg-white border border-indigo-100 rounded-2xl rounded-bl-none shadow-sm overflow-hidden text-left">
+          <header class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 bg-indigo-50 border-b border-indigo-100">
+            <h4 class="text-sm font-semibold text-indigo-950">Primer contacto</h4>
+            <span class="text-[11px] font-semibold text-indigo-700 bg-white border border-indigo-100 rounded-full px-2.5 py-1">${escapeHtml(message.title)}</span>
+          </header>
+          ${fields ? `<dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4 p-4 border-b border-gray-100">${fields}</dl>` : ''}
+          <div class="p-4">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-indigo-500 mb-2">Mensaje</p>
+            <p data-intake-message class="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere]">${escapeHtml(message.message)}</p>
+          </div>
+        </article>
+        <span class="text-[10px] text-gray-400 font-medium text-left ml-1">${time}</span>
+      </div>
+      <div class="conversation-participant-avatar conversation-participant-avatar--prospect order-first w-8 h-8" aria-label="Prospecto">P</div>
+    </div>
+  `;
+}
+
+$(document).ready(function() {
+  const conversationButtons = Array.from(document.querySelectorAll('.open-email-history-modal'));
+  const previousButton = document.getElementById('conversationPrevious');
+  const nextButton = document.getElementById('conversationNext');
+  const positionLabel = document.getElementById('conversationPosition');
+  const productionAgentName = document.getElementById('conversationAgentName').textContent.trim() || 'Sofía';
+  // En pruebas cada conversación es de un agente de pruebas: el nombre se
+  // ajusta al abrirla.
+  let assistantName = productionAgentName;
+  let assistantInitial = Array.from(assistantName)[0].toLocaleUpperCase('es-MX');
+  const conversationMode = "{{ mode|escapejs }}";
+
+  function setAssistantName(name) {
+    assistantName = String(name || productionAgentName);
+    assistantInitial = Array.from(assistantName)[0].toLocaleUpperCase('es-MX');
+    document.getElementById('conversationAgentName').textContent = assistantName;
+    document.getElementById('conversationAgentInitial').textContent = assistantInitial;
+    document.getElementById('modalBrandAgentName').textContent = assistantName;
+  }
+  let currentConversationIndex = -1;
+
+  function updateConversationNavigation(conversationId) {
+    currentConversationIndex = conversationButtons.findIndex(button =>
+      button.dataset.id === String(conversationId)
+    );
+    previousButton.disabled = currentConversationIndex <= 0;
+    nextButton.disabled = currentConversationIndex < 0
+      || currentConversationIndex >= conversationButtons.length - 1;
+    positionLabel.textContent = currentConversationIndex < 0
+      ? '—' : `${currentConversationIndex + 1} de ${conversationButtons.length}`;
+    positionLabel.setAttribute('aria-label', currentConversationIndex < 0
+      ? 'La conversación está fuera de esta página'
+      : `Conversación ${currentConversationIndex + 1} de ${conversationButtons.length} de esta página`);
+  }
+
+  function navigateConversation(direction) {
+    if (currentConversationIndex < 0) return;
+    const target = conversationButtons[currentConversationIndex + direction];
+    if (!target) return;
+    openConversationHistory(target.dataset.id, target);
+    const button = direction < 0 ? previousButton : nextButton;
+    const otherButton = direction < 0 ? nextButton : previousButton;
+    (button.disabled ? otherButton : button).focus({ preventScroll: true });
+  }
+
+  previousButton.addEventListener('click', () => navigateConversation(-1));
+  nextButton.addEventListener('click', () => navigateConversation(1));
+
+  function openConversationHistory(conversationId, trigger) {
+    if (!/^[1-9]\d*$/.test(String(conversationId))) return;
+    const baseUrl = conversationMode === 'shadow_testing'
+      ? "{% url 'app_prospects:test_conversation' 0 %}"
+      : "{% url 'app_prospects:conversation' 0 %}";
+    const url = baseUrl.replace('/0/', `/${conversationId}/`);
+    conversationRequestController?.abort();
+    const requestController = new AbortController();
+    conversationRequestController = requestController;
+    updateConversationNavigation(conversationId);
+
+    conversationModalTrigger = trigger || conversationButtons[currentConversationIndex] || null;
+    if ($('#conversationModal').hasClass('hidden')) {
+      conversationBodyOverflow = document.body.style.overflow;
+    }
+    setConversationModalView('chat');
+
+    // ==========================================
+    // REINICIAR MODAL
+    // ==========================================
+
+    $('#modalEmailMessages').empty();
+    $('#modalEmailDateContainer').addClass('hidden');
+    $('#crmPanel').addClass('hidden');
+    $('#crmEmpty').addClass('hidden');
+    $('#attributionPanel').addClass('hidden');
+    $('#modalTestBadge').addClass('hidden');
+    $('#modalEmailLoader').removeClass('hidden');
+    $('#conversationModal').removeClass('hidden');
+    document.getElementById('conversationDialog').focus({ preventScroll: true });
+    document.getElementById('crmColumn').scrollTop = 0;
+    document.getElementById('modalChatScroll').scrollTop = 0;
+
+    // ==========================================
+    // CONFIGURAR COLUMNAS
+    // ==========================================
+
+    $('#crmColumn').removeClass('hidden');
+
+    document.body.style.overflow = 'hidden';
+
+    // ==========================================
+    // OBTENER CONVERSACIÓN
+    // ==========================================
+
+    fetch(url, { signal: requestController.signal })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(
+            `Error ${response.status}: no se pudo cargar la conversación`
+          );
+        }
+
+        return response.json();
+      })
+      .then(data => {
+        if (conversationRequestController !== requestController) return;
+        $('#modalEmailLoader').addClass('hidden');
+        $('#modalEmailMessages').empty();
+        $('#modalTestBadge').toggleClass('hidden', !data.test_agent_name);
+        setAssistantName(data.test_agent_name);
+
+        // ==========================================
+        // ATRIBUCIÓN (UTMs)
+        // ==========================================
+
+        const attribution = data.attribution || {};
+
+        const attributionFields = [
+          ['attrChannel', ({ web: 'chatweb', email: 'Correo', form: 'Formulario' })[attribution.source] || attribution.source],
+          ['attrSource', attribution.utm_source],
+          ['attrMedium', attribution.utm_medium],
+          ['attrCampaign', attribution.utm_campaign],
+          ['attrContent', attribution.utm_content],
+          ['attrTerm', attribution.utm_term],
+          ['attrOrigin', attribution.traffic_origin],
+        ];
+
+        let hasAttribution = false;
+
+        attributionFields.forEach(function(pair) {
+          const text = String(pair[1] == null ? '' : pair[1]).trim();
+          const field = $('#' + pair[0]);
+
+          field.text(text || '—');
+
+          // El canal queda visible; los datos de atribución vacíos se ocultan.
+          if (pair[0] !== 'attrChannel') {
+            field.parent().toggleClass('hidden', !text);
+          }
+
+          if (text) hasAttribution = true;
+        });
+
+        if (hasAttribution) {
+          $('#attributionPanel').removeClass('hidden');
+        }
+
+        // ==========================================
+        // PANEL DE ANÁLISIS CRM
+        // ==========================================
+
+        const crm = data.crm;
+
+        if (crm) {
+          $('#crmUnidad').text(
+            crm.unidad_negocio_detectada || '—'
+          );
+
+          $('#crmScore').text(
+            crm.score_comercial != null
+              ? crm.score_comercial
+              : '—'
+          );
+
+          // Datos del contacto
+          const contacto = crm.contacto || {};
+          $('#crmContactoNombre').text(
+            contacto.nombre || '—'
+          );
+
+          $('#crmContactoEmpresa').text(
+            contacto.empresa || '—'
+          );
+
+          $('#crmContactoCorreo').text(
+            contacto.correo || '—'
+          );
+
+          $('#crmContactoTelefono').text(
+            contacto.telefono || crm.phone || crm.telefono || '—'
+          );
+
+          $('#crmPerfil').text(
+            crm.etiqueta_perfil_psicologico || '—'
+          );
+
+          $('#crmGuia').text(
+            crm.guia_negociacion_sugerida || '—'
+          );
+
+          $('#crmResumen').text(
+            crm.resumen_conversacion || '—'
+          );
+
+          $('#crmEmpresaResumen').text(
+            crm.resumen_empresa || '—'
+          );
+
+          const prospecting = getProspectingSummary(crm);
+          $('#crmProspectingStatus').text(prospecting.status + '. ');
+          $('#crmProspectingReason').text(prospecting.reason);
+          $('#crmProspectingIndicator').attr(
+            'class',
+            'mt-1.5 h-2.5 w-2.5 rounded-full flex-shrink-0 ' + prospecting.tone
+          );
+
+          const interactionProfile = getInteractionProfileBadge(crm.perfil_interaccion);
+          $('#crmInteractionProfile')
+            .text(interactionProfile.label)
+            .attr('class', 'inline-flex max-w-full items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ' + interactionProfile.tone);
+
+          $('#crmEmpty').addClass('hidden');
+          $('#crmPanel').removeClass('hidden');
+        } else {
+          $('#crmPanel').addClass('hidden');
+          $('#crmEmpty').removeClass('hidden');
+        }
+
+        // ==========================================
+        // MENSAJES
+        // ==========================================
+
+        // El contexto anterior es una instrucción interna para la IA, no un mensaje del chat.
+        const PREVIOUS_CONTEXT_PATTERN =
+          /^\[contexto de la conversaci[oó]n anterior\]/i;
+
+        const conversationMessages = (Array.isArray(data.conversation)
+          ? data.conversation
+          : []).filter(msg => !PREVIOUS_CONTEXT_PATTERN.test(
+            String(msg.content || '').trimStart()
+          ));
+
+        if (conversationMessages.length) {
+          const firstMessageDate = new Date(
+            conversationMessages[0].created_at
+          );
+
+          const dateOptions = {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          };
+
+          $('#modalEmailDate').text(
+            firstMessageDate.toLocaleDateString(
+              'es-MX',
+              dateOptions
+            )
+          );
+
+          $('#modalEmailDateContainer').removeClass(
+            'hidden'
+          );
+
+          // Mensajes que el bot intercambia con su base de
+          // conocimiento. Se reconocen por el prefijo con el que los
+          // escribe el flujo, no por el tipo: quedan guardados como
+          // mensajes normales del historial.
+          const INTERNAL_QUERY_PATTERN =
+            /^#{0,6}\s*consulta\s+empresarial\s*:/i;
+
+          const SEARCH_RESULT_PATTERN =
+            /^#{0,6}\s*(?:resultado\s+de\s+(?:la\s+)?)?b[úu]squeda\s*:/i;
+
+          const REMINDER_PATTERN =
+            /^correo\s+de\s+recordatorio\s*:/i;
+
+          const REMINDER_SENT_PATTERN =
+            /^env[íi]o\s+de\s+recordatorio\s*:/i;
+
+          const TOOL_MESSAGE_PATTERN =
+            /^herramienta\s*:/i;
+
+          let hasUserMessage = false;
+
+          conversationMessages.forEach(function(msg) {
+            const messageDate = new Date(
+              msg.created_at
+            );
+
+            const time = messageDate.toLocaleTimeString(
+              'es-MX',
+              {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+              }
+            );
+
+            const rawContent = String(
+              msg.content || ''
+            );
+
+            const trimmedContent = rawContent.trim();
+
+            // La consulta que el bot le hace a su base de
+            // conocimiento no se muestra: es maquinaria
+            // interna y no aporta a quien lee la
+            // conversación.
+            if (INTERNAL_QUERY_PATTERN.test(trimmedContent)) {
+              return;
+            }
+
+            const isUser = msg.type === 'user';
+
+            const initialMessage = isUser && !hasUserMessage
+              ? parseInitialMessage(rawContent, attribution.source)
+              : null;
+
+            if (isUser) hasUserMessage = true;
+
+            // Detectar notas internas que comiencen con:
+            // Lead prospectado
+            const isInternalAiNote = (
+              msg.type === 'assistant'
+              && /^#{0,6}\s*lead prospectado\b/i.test(
+                trimmedContent
+              )
+            );
+
+            const isReminder = (
+              msg.type === 'assistant'
+              && REMINDER_PATTERN.test(trimmedContent)
+            );
+
+            const isReminderSent = (
+              msg.type === 'assistant'
+              && REMINDER_SENT_PATTERN.test(trimmedContent)
+            );
+
+            const isToolMessage = (
+              msg.type === 'assistant'
+              && TOOL_MESSAGE_PATTERN.test(trimmedContent)
+            );
+
+            // Lo que el buscador interno encontró. Va aparte
+            // porque no es algo que el bot le haya dicho al
+            // cliente.
+            const isSearchResult = (
+              !isInternalAiNote
+              && SEARCH_RESULT_PATTERN.test(trimmedContent)
+            );
+
+            // En las notas internas se quitan únicamente
+            // los símbolos ###. Se conserva "Lead prospectado".
+            let displayContent = rawContent;
+
+            // En chatweb, correo y formulario se muestra solo el texto del prospecto.
+            if (isUser && ['web', 'email', 'form'].includes(attribution.source)) {
+              displayContent = parseInitialMessage(rawContent, attribution.source).message;
+            }
+
+            else if (isInternalAiNote) {
+              displayContent = trimmedContent
+                .replace(/^#{1,6}\s*/, '');
+            }
+
+            // La etiqueta visual ya indica que se trata de un
+            // recordatorio, por lo que no repetimos el prefijo.
+            else if (isReminder) {
+              displayContent = trimmedContent
+                .replace(REMINDER_PATTERN, '')
+                .trim();
+            }
+
+            else if (isReminderSent) {
+              displayContent = trimmedContent
+                .replace(REMINDER_SENT_PATTERN, '')
+                .trim();
+            }
+
+            // En el resultado de búsqueda se quita el prefijo:
+            // lo que dice ya lo dice la etiqueta de arriba.
+            else if (isSearchResult) {
+              displayContent = trimmedContent
+                .replace(SEARCH_RESULT_PATTERN, '')
+                .trim();
+            }
+
+            const text = escapeHtml(displayContent);
+
+            let html = '';
+
+            // ==========================================
+            // NOTA INTERNA DE LA IA
+            // ==========================================
+
+            if (isInternalAiNote) {
+              html = `
+                <div class="flex justify-end items-start gap-2">
+
+                  <div class="order-last w-8 h-8 mt-1 rounded-full bg-slate-200 border border-slate-300 flex items-center justify-center flex-shrink-0">
+                    <svg
+                      class="w-4 h-4 text-slate-500"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"
+                      ></path>
+
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M14 2v6h6"
+                      ></path>
+
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M8 13h8M8 17h6"
+                      ></path>
+                    </svg>
+                  </div>
+
+                  <div class="flex flex-col space-y-1 max-w-[78%]">
+
+                    <div class="bg-slate-100 border border-slate-200 rounded-2xl rounded-tr-none px-4 py-3 shadow-sm">
+
+                      <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                        <span class="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                          Nota interna de IA
+                        </span>
+
+                        <span class="text-[10px] font-medium text-slate-500 bg-slate-200/80 px-2 py-0.5 rounded-full">
+                          No enviada al prospecto
+                        </span>
+                      </div>
+
+                      <p class="text-sm leading-relaxed text-slate-600 whitespace-pre-line">${text}</p>
+                    </div>
+
+                    <span class="self-end text-[10px] text-gray-400 font-medium mr-1">
+                      ${time}
+                    </span>
+                  </div>
+                </div>
+              `;
+            }
+
+            // ==========================================
+            // RECORDATORIO ENVIADO POR CORREO
+            // ==========================================
+
+            else if (isReminder) {
+              html = `
+                <div class="flex justify-end items-start gap-2">
+
+                  <div class="order-last w-8 h-8 mt-1 rounded-full bg-purple-100 border border-purple-300 flex items-center justify-center flex-shrink-0">
+                    <svg
+                      class="w-4 h-4 text-purple-700"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 00-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0a3 3 0 11-6 0"
+                      ></path>
+                    </svg>
+                  </div>
+
+                  <div class="flex flex-col space-y-1 max-w-[78%]">
+
+                    <div class="bg-purple-50 border border-purple-200 rounded-2xl rounded-tr-none px-4 py-3 shadow-sm">
+
+                      <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                        <span class="text-[10px] font-bold uppercase tracking-wide text-purple-700">
+                          Recordatorio por correo
+                        </span>
+
+                        <span class="text-[10px] font-medium text-purple-700 bg-purple-200/70 px-2 py-0.5 rounded-full">
+                          Seguimiento automático
+                        </span>
+                      </div>
+
+                      <p class="text-sm leading-relaxed text-purple-950 whitespace-pre-line">${text}</p>
+                    </div>
+
+                    <span class="self-end text-[10px] text-purple-400 font-medium mr-1">
+                      ${time}
+                    </span>
+                  </div>
+                </div>
+              `;
+            }
+
+            // ==========================================
+            // ENVÍO DE RECORDATORIO
+            // ==========================================
+
+            else if (isReminderSent) {
+              html = `
+                <div class="flex justify-end items-start gap-2">
+
+                  <div class="order-last w-8 h-8 mt-1 rounded-full bg-green-100 border border-green-300 flex items-center justify-center flex-shrink-0">
+                    <svg
+                      class="w-4 h-4 text-green-700"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                      ></path>
+                    </svg>
+                  </div>
+
+                  <div class="flex flex-col space-y-1 max-w-[78%]">
+
+                    <div class="bg-green-50 border border-green-200 rounded-2xl rounded-tr-none px-4 py-3 shadow-sm">
+
+                      <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                        <span class="text-[10px] font-bold uppercase tracking-wide text-green-700">
+                          Envío de recordatorio
+                        </span>
+
+                        <span class="text-[10px] font-medium text-green-700 bg-green-200/70 px-2 py-0.5 rounded-full">
+                          Seguimiento automático
+                        </span>
+                      </div>
+
+                      <p class="text-sm leading-relaxed text-green-950 whitespace-pre-line">${text}</p>
+                    </div>
+
+                    <span class="self-end text-[10px] text-gray-400 font-medium mr-1">
+                      ${time}
+                    </span>
+                  </div>
+                </div>
+              `;
+            }
+
+            // ==========================================
+            // MENSAJE DE USO DE HERRAMIENTA
+            // ==========================================
+
+            else if (isToolMessage) {
+              html = `
+                <div class="flex justify-end items-start gap-2">
+
+                  <div class="order-last w-8 h-8 mt-1 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center flex-shrink-0">
+                    <svg
+                      class="w-4 h-4 text-indigo-600"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M14.7 6.3a4 4 0 01-5 5L4 17l3 3 5.7-5.7a4 4 0 005-5l-2.4 2.4-3-3 2.4-2.4z"
+                      ></path>
+                    </svg>
+                  </div>
+
+                  <div class="flex flex-col space-y-1 max-w-[78%]">
+
+                    <div class="bg-indigo-50 border border-indigo-100 rounded-2xl rounded-tr-none px-4 py-3 shadow-sm">
+
+                      <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                        <span class="text-[10px] font-bold uppercase tracking-wide text-indigo-700">
+                          Herramienta
+                        </span>
+
+                        <span class="text-[10px] font-medium text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full">
+                          Acción automatizada
+                        </span>
+                      </div>
+
+                      <p class="text-sm leading-relaxed text-slate-700 whitespace-pre-line">${text}</p>
+                    </div>
+
+                    <span class="self-end text-[10px] text-slate-400 font-medium mr-1">
+                      ${time}
+                    </span>
+                  </div>
+                </div>
+              `;
+            }
+
+            // ==========================================
+            // RESULTADO DE LA BÚSQUEDA INTERNA
+            // ==========================================
+
+            else if (isSearchResult) {
+              html = `
+                <div class="flex justify-end items-start gap-2">
+
+                  <div class="order-last w-8 h-8 mt-1 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center flex-shrink-0">
+                    <svg
+                      class="w-4 h-4 text-indigo-600"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M21 21l-4.35-4.35"
+                      ></path>
+
+                      <circle
+                        cx="10.5"
+                        cy="10.5"
+                        r="6.5"
+                      ></circle>
+                    </svg>
+                  </div>
+
+                  <div class="flex flex-col space-y-1 max-w-[78%]">
+
+                    <div class="bg-indigo-50 border border-indigo-100 rounded-2xl rounded-tr-none px-4 py-3 shadow-sm">
+
+                      <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                        <span class="text-[10px] font-bold uppercase tracking-wide text-indigo-700">
+                          Búsqueda de ${escapeHtml(assistantName)}
+                        </span>
+
+                        <span class="text-[10px] font-medium text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full">
+                          Resultado de búsqueda
+                        </span>
+                      </div>
+
+                      <p class="text-sm leading-relaxed text-slate-700 whitespace-pre-line">${text}</p>
+                    </div>
+
+                    <span class="self-end text-[10px] text-gray-400 font-medium mr-1">
+                      ${time}
+                    </span>
+                  </div>
+                </div>
+              `;
+            }
+
+            // ==========================================
+            // MENSAJE DEL USUARIO
+            // ==========================================
+
+            else if (initialMessage) {
+              html = renderInitialMessageCard(initialMessage, time, crm);
+            }
+
+            else if (isUser) {
+              html = `
+                <div class="flex justify-start items-end gap-2">
+                  <div class="flex flex-col space-y-1 text-left max-w-[75%]">
+
+                    <div class="bg-indigo-600 text-white rounded-2xl rounded-tl-none px-4 py-3 shadow-md">
+                      <p class="text-sm leading-relaxed whitespace-pre-line">${text}</p>
+                    </div>
+
+                    <span class="text-[10px] text-gray-400 font-medium ml-1">
+                      ${time}
+                    </span>
+                  </div>
+
+                  <div class="conversation-participant-avatar conversation-participant-avatar--prospect order-first w-8 h-8" aria-label="Prospecto">P</div>
+                </div>
+              `;
+            }
+
+            // ==========================================
+            // MENSAJE NORMAL DE LA IA
+            // ==========================================
+
+            else {
+              html = `
+                <div class="flex justify-end items-end gap-2">
+
+                  <div class="conversation-participant-avatar conversation-participant-avatar--assistant order-last w-8 h-8" aria-label="${escapeHtml(assistantName)}">${escapeHtml(assistantInitial)}</div>
+
+                  <div class="flex flex-col space-y-1 text-left max-w-[75%]">
+
+                    <div class="bg-white text-gray-800 border border-gray-200 rounded-2xl rounded-tr-none px-4 py-3 shadow-sm">
+                      <p class="text-sm leading-relaxed whitespace-pre-line">${text}</p>
+                    </div>
+
+                    <span class="self-end text-[10px] text-gray-400 font-medium mr-1">
+                      ${time}
+                    </span>
+                  </div>
+                </div>
+              `;
+            }
+
+            $('#modalEmailMessages').append(html);
+          });
+        } else {
+          $('#modalEmailDateContainer').addClass(
+            'hidden'
+          );
+
+          $('#modalEmailMessages').html(`
+            <div class="flex flex-col items-center justify-center h-full text-gray-400 py-10">
+              <svg
+                class="w-12 h-12 mb-2 opacity-50"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                ></path>
+              </svg>
+
+              <p>No hay mensajes en esta conversación.</p>
+            </div>
+          `);
+        }
+      })
+      .catch(error => {
+        if (error.name === 'AbortError' || conversationRequestController !== requestController) return;
+        $('#modalEmailLoader').addClass('hidden');
+        $('#modalEmailDateContainer').addClass(
+          'hidden'
+        );
+
+        $('#crmPanel').addClass('hidden');
+        $('#crmEmpty').removeClass('hidden');
+
+        $('#modalEmailMessages').html(`
+          <div class="text-center text-red-500 py-4 bg-red-50 rounded-lg">
+            No se pudo cargar el historial. Intenta abrir la conversación de nuevo.
+          </div>
+        `);
+
+        console.error('Error:', error);
+      });
+  }
+
+  $('.open-email-history-modal').on('click', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    openConversationHistory($(this).data('id'), this);
+  });
+
+  // Permite abrir una conversación desde Correos aunque no esté en la página filtrada.
+  const linkedConversation = new URLSearchParams(window.location.search).get('open_conversation');
+  if (linkedConversation) openConversationHistory(linkedConversation);
+});
+</script>
+
+<style>
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-8px); }
+}
+.fade-out {
+  animation: fadeOut 0.35s ease forwards;
+}
+</style>
+{% endblock %}

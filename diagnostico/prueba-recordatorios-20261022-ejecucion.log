@@ -1,0 +1,25 @@
+2026-10-22 19:44:26,942 INFO ESCENARIO: Estados actuales | IDs=[281, 282, 283, 284, 285, 286]
+2026-10-22 19:44:27,809 INFO Evaluación: id=281 | canal=form | semaforo=verde | cumple_filtros=False | Semáforo verde; requiere amarillo
+2026-10-22 19:44:27,809 INFO Evaluación: id=282 | canal=form | semaforo=rojo | cumple_filtros=False | Semáforo rojo; requiere amarillo
+2026-10-22 19:44:27,809 INFO Evaluación: id=283 | canal=web | semaforo=verde | cumple_filtros=False | Semáforo verde; requiere amarillo
+2026-10-22 19:44:27,809 INFO Evaluación: id=284 | canal=web | semaforo=sin semáforo | cumple_filtros=False | Semáforo ausente; requiere amarillo
+2026-10-22 19:44:27,811 INFO Evaluación: id=285 | canal=email | semaforo=verde | cumple_filtros=False | Semáforo verde; requiere amarillo
+2026-10-22 19:44:27,812 INFO Evaluación: id=286 | canal=email | semaforo=amarillo | cumple_filtros=True | Listo para simulación
+2026-10-22 19:44:28,283 INFO Recordatorios: modo=PRUEBA sin SMTP | canales=todos | limite_48h=2026-10-21T01:44:27.854204+00:00 | total=6 | con_48h=6 | sin_recordatorio=6 | en_proceso=1
+2026-10-22 19:44:28,354 INFO Recordatorio SIMULADO, sin SMTP: conversacion_id=286 | canal=email | destinatario=prueba-recordatorios-20261022-email-amarillo@example.test | origen=prospect.email | no se modifica fase ni historial
+2026-10-22 19:44:28,355 INFO Recordatorios PRUEBA: candidatos=1 | simulados=1 | sin_correo_valido=0 | envios_reales=0 | cambios_en_base=0
+2026-10-22 19:44:28,423 INFO ROLLBACK completado: contactos y semáforos originales conservados.
+2026-10-22 19:44:28,423 INFO ESCENARIO: Una amarilla por canal, solo dentro de esta transacción | IDs=[281, 282, 283, 284, 285, 286]
+2026-10-22 19:44:29,345 INFO Evaluación: id=281 | canal=form | semaforo=verde | cumple_filtros=False | Semáforo verde; requiere amarillo
+2026-10-22 19:44:29,345 INFO Evaluación: id=282 | canal=form | semaforo=amarillo | cumple_filtros=True | Listo para simulación
+2026-10-22 19:44:29,345 INFO Evaluación: id=283 | canal=web | semaforo=verde | cumple_filtros=False | Semáforo verde; requiere amarillo
+2026-10-22 19:44:29,346 INFO Evaluación: id=284 | canal=web | semaforo=amarillo | cumple_filtros=True | Listo para simulación
+2026-10-22 19:44:29,346 INFO Evaluación: id=285 | canal=email | semaforo=verde | cumple_filtros=False | Semáforo verde; requiere amarillo
+2026-10-22 19:44:29,346 INFO Evaluación: id=286 | canal=email | semaforo=amarillo | cumple_filtros=True | Listo para simulación
+2026-10-22 19:44:29,776 INFO Recordatorios: modo=PRUEBA sin SMTP | canales=todos | limite_48h=2026-10-21T01:44:29.346327+00:00 | total=6 | con_48h=6 | sin_recordatorio=6 | en_proceso=3
+2026-10-22 19:44:29,846 INFO Recordatorio SIMULADO, sin SMTP: conversacion_id=282 | canal=form | destinatario=prueba-recordatorios-20261022-form-rojo@example.test | origen=prospect.email | no se modifica fase ni historial
+2026-10-22 19:44:29,847 INFO Recordatorio SIMULADO, sin SMTP: conversacion_id=284 | canal=web | destinatario=prueba-recordatorios-20261022-web-sin-semaforo@example.test | origen=prospect.email | no se modifica fase ni historial
+2026-10-22 19:44:29,847 INFO Recordatorio SIMULADO, sin SMTP: conversacion_id=286 | canal=email | destinatario=prueba-recordatorios-20261022-email-amarillo@example.test | origen=prospect.email | no se modifica fase ni historial
+2026-10-22 19:44:29,847 INFO Recordatorios PRUEBA: candidatos=3 | simulados=3 | sin_correo_valido=0 | envios_reales=0 | cambios_en_base=0
+2026-10-22 19:44:29,915 INFO ROLLBACK completado: contactos y semáforos originales conservados.
+2026-10-22 19:44:30,129 INFO Verificación final: fases, contactos, fechas e historiales intactos. Envíos reales=0.

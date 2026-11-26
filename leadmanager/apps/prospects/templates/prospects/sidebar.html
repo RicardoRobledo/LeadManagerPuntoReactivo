@@ -1,0 +1,153 @@
+{% load static %}
+
+<aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 sidebar-background transition-transform duration-300 ease-in-out transform -translate-x-full md:translate-x-0 flex flex-col border-r border-[#dde5f5]">
+
+  <div class="shrink-0 flex items-center justify-center px-4 py-5 border-b border-[#dde5f5] sidebar-background">
+    <img src="{% static 'imgs/logo.png' %}" alt="Punto Reactivo, agencia de marketing" class="block w-full max-w-[224px] h-auto object-contain">
+  </div>
+
+  <nav class="flex-1 min-h-0 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
+    
+    <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
+      Principal
+    </p>
+
+    <a href="{% url 'app_prospects:dashboard' %}" 
+       class="group flex items-center px-4 py-3 text-sm font-medium rounded-xl border border-transparent transition-all duration-300
+       {% if request.resolver_match.url_name == 'dashboard' %} 
+         bg-gradient-to-r from-[#2451f5] to-[#5524ef] text-white shadow-md shadow-blue-600/15
+       {% else %} 
+         text-[#344268] hover:bg-[#eef2ff] hover:text-[#2451f5] hover:translate-x-1
+       {% endif %}">
+      <svg class="w-5 h-5 mr-3 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+      </svg>
+      Panel principal
+    </a>
+
+    <a href="{% url 'app_prospects:conversations' %}" 
+       class="group flex items-center px-4 py-3 text-sm font-medium rounded-xl border border-transparent transition-all duration-300
+       {% if request.resolver_match.url_name == 'conversations' %}
+         bg-gradient-to-r from-[#2451f5] to-[#5524ef] text-white shadow-md shadow-blue-600/15
+       {% else %} 
+         text-[#344268] hover:bg-[#eef2ff] hover:text-[#2451f5] hover:translate-x-1
+       {% endif %}">
+      <svg class="w-5 h-5 mr-3 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+      </svg>
+      Conversaciones
+    </a>
+
+    <a href="{% url 'app_automations:email_deliveries' %}"
+       {% if request.resolver_match.url_name == 'email_deliveries' or request.resolver_match.url_name == 'email_delivery_detail' %}aria-current="page"{% endif %}
+       class="group flex items-center px-4 py-3 text-sm font-medium rounded-xl border border-transparent transition-all duration-300
+       {% if request.resolver_match.url_name == 'email_deliveries' or request.resolver_match.url_name == 'email_delivery_detail' %}
+         bg-gradient-to-r from-[#2451f5] to-[#5524ef] text-white shadow-md shadow-blue-600/15
+       {% else %}
+         text-[#344268] hover:bg-[#eef2ff] hover:text-[#2451f5] hover:translate-x-1
+       {% endif %}">
+      <svg class="w-5 h-5 mr-3 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <rect x="3" y="5" width="18" height="14" rx="2" /><path stroke-linecap="round" stroke-linejoin="round" d="m3 6 9 7 9-7" />
+      </svg>
+      Correos
+    </a>
+
+    <a href="{% url 'app_prospects:statistics' %}" 
+       class="group flex items-center px-4 py-3 text-sm font-medium rounded-xl border border-transparent transition-all duration-300
+       {% if request.resolver_match.url_name == 'statistics' %} 
+         bg-gradient-to-r from-[#2451f5] to-[#5524ef] text-white shadow-md shadow-blue-600/15
+       {% else %}
+         text-[#344268] hover:bg-[#eef2ff] hover:text-[#2451f5] hover:translate-x-1
+       {% endif %}">
+      <svg class="w-5 h-5 mr-3 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M7 13v5M12 9v9M17 5v13" />
+      </svg>
+      Estadísticas
+    </a>
+
+    <a href="{% url 'app_prospects:knowledge' %}"
+       class="group flex items-center px-4 py-3 text-sm font-medium rounded-xl border border-transparent transition-all duration-300
+       {% if request.resolver_match.url_name == 'knowledge' %}
+         bg-gradient-to-r from-[#2451f5] to-[#5524ef] text-white shadow-md shadow-blue-600/15
+       {% else %}
+         text-[#344268] hover:bg-[#eef2ff] hover:text-[#2451f5] hover:translate-x-1
+       {% endif %}">
+      <svg class="w-5 h-5 mr-3 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+      </svg>
+      Conocimiento
+    </a>
+
+    <a href="{% url 'app_prospects:agents' %}"
+       {% if request.resolver_match.url_name == 'agents' %}aria-current="page"{% endif %}
+       class="group flex items-center px-4 py-3 text-sm font-medium rounded-xl border border-transparent transition-all duration-300
+       {% if request.resolver_match.url_name == 'agents' %}
+         bg-gradient-to-r from-[#2451f5] to-[#5524ef] text-white shadow-md shadow-blue-600/15
+       {% else %}
+         text-[#344268] hover:bg-[#eef2ff] hover:text-[#2451f5] hover:translate-x-1
+       {% endif %}">
+      <svg class="w-5 h-5 mr-3 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v3m-5 0h10a3 3 0 013 3v9a3 3 0 01-3 3H7a3 3 0 01-3-3V9a3 3 0 013-3zM4 12H2m18 0h2M8 16h8M8 11h.01M16 11h.01" />
+      </svg>
+      Agentes
+    </a>
+
+    <a href="{% url 'app_automations:runs' %}"
+       class="group flex items-center px-4 py-3 text-sm font-medium rounded-xl border border-transparent transition-all duration-300
+       {% if request.resolver_match.url_name == 'runs' or request.resolver_match.url_name == 'run_detail' %}
+         bg-gradient-to-r from-[#2451f5] to-[#5524ef] text-white shadow-md shadow-blue-600/15
+       {% else %}
+         text-[#344268] hover:bg-[#eef2ff] hover:text-[#2451f5] hover:translate-x-1
+       {% endif %}">
+      <svg class="w-5 h-5 mr-3 transition-transform group-hover:rotate-45" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+      Automatizaciones
+    </a>
+
+    <a href="{% url 'app_prospects:chatbot_analyzer' %}"
+      class="group flex items-center justify-between px-4 py-3 text-sm font-medium rounded-xl border border-transparent transition-all duration-300
+      {% if request.resolver_match.url_name == 'chatbot_analyzer' %} 
+        bg-gradient-to-r from-[#2451f5] to-[#5524ef] text-white shadow-md shadow-blue-600/15
+      {% else %} 
+        text-[#344268] hover:bg-[#eef2ff] hover:text-[#2451f5] hover:translate-x-1
+      {% endif %}">
+      <div class="flex items-center">
+        <svg class="w-5 h-5 mr-3 transition-transform group-hover:rotate-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.25 15L17.5 17.625 14.875 18.375l2.625.75L18.25 21.75l.75-2.625 2.625-.75-2.625-.75L18.25 15zM15.75 2.25l.75 2.625 2.625.75-2.625.75L15.75 9l-.75-2.625-2.625-.75 2.625-.75L15.75 2.25z" />
+        </svg>
+        Analizador del chatbot
+      </div>
+      <span class="flex h-5 w-8 shrink-0 items-center justify-center rounded-lg bg-[#eef2ff] text-[10px] font-bold text-[#4e36c9] border border-[#d9dfff] group-hover:bg-[#e0e7ff] transition-colors">
+        IA
+      </span>
+    </a>
+
+  </nav>
+
+  <div class="shrink-0 p-4 border-t border-[#dde5f5] sidebar-background">
+    <div class="flex items-center gap-3 mb-4 px-2">
+       <div class="h-9 w-9 shrink-0 rounded-full bg-gradient-to-br from-[#2451f5] to-[#5524ef] border-2 border-white/20 flex items-center justify-center text-sm font-bold text-white shadow-md shadow-blue-600/15">
+          {{ request.user.username|slice:":1"|upper }}
+       </div>
+       <div class="overflow-hidden">
+          <p class="text-sm font-semibold text-[#20294b] truncate">{{ request.user.username }}</p>
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+            <p class="text-xs text-slate-500 truncate">En línea</p>
+          </div>
+       </div>
+    </div>
+
+    <form action="{% url 'app_authentication:logout' %}" method="post">
+      {% csrf_token %}
+      <button type="submit" class="w-full flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-medium text-[#344268] bg-white hover:bg-[#f4f7ff] hover:text-[#2451f5] transition-all border border-[#dde5f5] group">
+        <svg class="w-4 h-4 mr-2 text-[#657394] group-hover:text-[#2451f5] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+        Cerrar sesión
+      </button>
+    </form>
+  </div>
+</aside>

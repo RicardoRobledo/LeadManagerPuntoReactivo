@@ -1,0 +1,247 @@
+{% extends 'prospects/base_dashboard.html' %}
+
+{% block title %}Ejecución #{{ run.id }} · {{ run.agent_display_name|default:"—" }} | Lead Manager{% endblock %}
+
+{% block content %}
+<div class="w-full min-h-screen panel-background p-3 md:p-4">
+  <div class="w-full space-y-8">
+
+    <div class="flex items-center gap-4">
+      <a href="{% url 'app_automations:runs' %}" class="p-2 bg-white border border-gray-200 rounded-xl text-gray-500 hover:text-indigo-600 hover:border-indigo-200 shadow-sm transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+      </a>
+      <div>
+        <h2 class="text-2xl font-bold text-gray-900 tracking-tight">Ejecución #{{ run.id }}</h2>
+        <p class="text-sm text-gray-500">Seguimiento de la ejecución del agente.</p>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+      <div class="p-6 grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div>
+          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Agente</p>
+          <div class="flex min-w-0 items-center gap-3">
+            {% if run.agent_has_avatar %}
+              <img src="{% url 'app_prospects:agent_avatar_file' run.agent_name %}" alt="" width="40" height="40" class="h-10 w-10 shrink-0 rounded-full bg-slate-100 object-cover ring-1 ring-slate-200">
+            {% else %}
+              <span aria-hidden="true" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-sm font-semibold text-indigo-600 ring-1 ring-indigo-100">{{ run.agent_display_name|default:"?"|first|upper }}</span>
+            {% endif %}
+            <div class="min-w-0">
+              <p class="break-words text-sm font-semibold text-gray-900">{{ run.agent_display_name|default:"—" }}</p>
+              <p class="mt-0.5 text-xs font-medium {% if run.mode == 'shadow_testing' %}text-slate-500{% else %}text-violet-600{% endif %}">{% if run.mode == 'shadow_testing' %}Pruebas{% else %}Atención real{% endif %}</p>
+              {% if run.production_run_id %}
+                <a href="{% url 'app_automations:run_detail' run.production_run_id %}" class="mt-1 inline-block text-xs text-indigo-600 hover:underline">Ejecución real #{{ run.production_run_id }}</a>
+              {% endif %}
+              {% if run.agent_category %}
+                <p class="mt-0.5 text-xs text-gray-500">{{ run.agent_category }}</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Canal</p>
+          <p class="text-sm font-semibold text-gray-900">{% if run.source == 'web' %}chatweb{% elif run.source == 'email' %}Correo{% elif run.source == 'form' %}Formulario{% else %}{{ run.source|default:"—" }}{% endif %}</p>
+        </div>
+
+        <div>
+          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Estado</p>
+          {% if run.status == 'success' %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 ring-1 ring-green-600/20">Completada</span>
+          {% elif run.status == 'failed' %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 ring-1 ring-red-600/20">Con errores</span>
+          {% elif run.status == 'queued' %}
+            <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">En cola</span>
+          {% else %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-blue-600/20">En curso</span>
+          {% endif %}
+        </div>
+
+        <div>
+          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Duración</p>
+          <p class="text-sm font-semibold text-gray-900">{{ duration|default:"—" }}</p>
+        </div>
+
+        <div>
+          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Inicio</p>
+          <p class="text-sm font-semibold text-gray-900">{{ run.started_at|date:"d M Y H:i:s" }}</p>
+        </div>
+
+        <div>
+          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Finalización</p>
+          <p class="text-sm font-semibold text-gray-900">{{ run.finished_at|date:"d M Y H:i:s"|default:"—" }}</p>
+        </div>
+
+        <div class="col-span-2">
+          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Conversación</p>
+          {% if run.conversation %}
+            <p class="text-sm font-mono text-indigo-600 break-all">{{ run.conversation.session_id|default:"—" }}</p>
+            {% if run.conversation.source or run.conversation.prospect %}
+              <p class="text-xs text-gray-500 mt-0.5">
+                {% if run.conversation.source == 'web' %}chatweb{% elif run.conversation.source == 'email' %}Correo{% elif run.conversation.source == 'form' %}Formulario{% else %}{{ run.conversation.source|default:"" }}{% endif %}
+                {% if run.conversation.prospect %}{% if run.conversation.source %} · {% endif %}{{ run.conversation.prospect.name }}{% endif %}
+              </p>
+            {% endif %}
+          {% else %}
+            <p class="text-sm font-semibold text-gray-400">—</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% if run_events %}
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+        <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wide">Eventos de la ejecución</h3>
+      </div>
+      <ul class="divide-y divide-gray-100">
+        {% for event in run_events %}
+          <li class="px-6 py-3 flex items-start gap-3">
+            <span class="mt-1 flex-shrink-0">
+              {% if event.level == 'warning' %}
+                <span class="inline-block h-2.5 w-2.5 rounded-full bg-amber-400"></span>
+              {% elif event.level == 'debug' %}
+                <span class="inline-block h-2.5 w-2.5 rounded-full bg-gray-300"></span>
+              {% else %}
+                <span class="inline-block h-2.5 w-2.5 rounded-full bg-blue-400"></span>
+              {% endif %}
+            </span>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-gray-800">{{ event.message }}</p>
+              {% if event.data_json %}
+                <pre class="mt-1 text-xs text-gray-500 bg-gray-50 rounded-lg p-2 overflow-x-auto">{{ event.data_json }}</pre>
+              {% endif %}
+            </div>
+            <span class="text-xs text-gray-400 whitespace-nowrap">{{ event.created_at|date:"H:i:s" }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <div class="space-y-4">
+      <div class="flex items-center gap-2">
+        <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+          </svg>
+        </div>
+        <h3 class="text-lg font-bold text-gray-800">Pasos</h3>
+      </div>
+
+      {% for step in steps %}
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+
+        <div class="px-6 py-4 flex items-center gap-4">
+          <span class="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm font-bold border border-indigo-100">
+            {{ step.order }}
+          </span>
+
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-gray-900">{{ step.step_name }}</p>
+            <p class="text-xs text-gray-400">
+              {{ step.started_at|date:"d M Y H:i:s" }}
+              {% if step.duration %} · {{ step.duration }}{% endif %}
+            </p>
+          </div>
+
+          {% if step.status == 'success' %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 ring-1 ring-green-600/20">
+              <svg class="mr-1 h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+              Completada
+            </span>
+          {% elif step.status == 'failed' %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 ring-1 ring-red-600/20">
+              <svg class="mr-1 h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              Con errores
+            </span>
+          {% else %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-blue-600/20">
+              <svg class="mr-1 h-3.5 w-3.5 animate-spin" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10"></circle><path class="opacity-75" d="M12 2a10 10 0 0110 10"></path></svg>
+              En curso
+            </span>
+          {% endif %}
+        </div>
+
+        <div class="px-6 pb-5 border-t border-gray-100 pt-4 space-y-4">
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div>
+              <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Inicio</p>
+              <p class="text-sm font-medium text-gray-800">{{ step.started_at|date:"d M Y H:i:s" }}</p>
+            </div>
+
+            <div>
+              <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Finalización</p>
+              <p class="text-sm font-medium text-gray-800">{{ step.finished_at|date:"d M Y H:i:s"|default:"—" }}</p>
+            </div>
+
+            <div>
+              <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Duración</p>
+              <p class="text-sm font-medium text-gray-800">{{ step.duration|default:"—" }}</p>
+            </div>
+          </div>
+
+          {% if step.exception_type %}
+            <div class="bg-red-50 rounded-xl p-4 border border-red-100">
+              <p class="text-xs text-red-400 uppercase tracking-wide mb-1">Excepción</p>
+              <p class="text-sm font-semibold text-red-700">{{ step.exception_type }}</p>
+              {% if step.error_message %}
+                <p class="mt-1 text-sm text-red-600">{{ step.error_message }}</p>
+              {% endif %}
+            </div>
+          {% endif %}
+
+          {% if step.traceback %}
+            <div>
+              <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Detalle del error</p>
+              <pre class="text-xs text-gray-600 bg-gray-50 rounded-xl p-4 overflow-x-auto whitespace-pre-wrap">{{ step.traceback }}</pre>
+            </div>
+          {% endif %}
+        </div>
+
+        <details class="border-t border-gray-100">
+          <summary class="px-6 py-3 flex items-center gap-2 cursor-pointer hover:bg-gray-50 list-none text-sm font-medium text-indigo-600">
+            <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+            Ver eventos ({{ step.events.all|length }})
+          </summary>
+
+          <div class="px-6 pb-5">
+            {% if step.events.all %}
+              <ul class="space-y-2">
+                {% for event in step.events.all %}
+                  <li class="flex items-start gap-3 rounded-xl border border-gray-100 p-3">
+                    <span class="mt-1 flex-shrink-0">
+                      {% if event.level == 'warning' %}
+                        <span class="inline-block h-2.5 w-2.5 rounded-full bg-amber-400"></span>
+                      {% elif event.level == 'debug' %}
+                        <span class="inline-block h-2.5 w-2.5 rounded-full bg-gray-300"></span>
+                      {% else %}
+                        <span class="inline-block h-2.5 w-2.5 rounded-full bg-blue-400"></span>
+                      {% endif %}
+                    </span>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm text-gray-800">{{ event.message }}</p>
+                      {% if event.data_json %}
+                        <pre class="mt-1 text-xs text-gray-500 bg-gray-50 rounded-lg p-2 overflow-x-auto">{{ event.data_json }}</pre>
+                      {% endif %}
+                    </div>
+                    <span class="text-xs text-gray-400 whitespace-nowrap">{{ event.created_at|date:"H:i:s" }}</span>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p class="text-sm text-gray-400">No hay eventos para este paso.</p>
+            {% endif %}
+          </div>
+        </details>
+      </div>
+      {% empty %}
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-10 text-center text-gray-500">
+        <p class="text-sm">No se registraron pasos para esta ejecución.</p>
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}

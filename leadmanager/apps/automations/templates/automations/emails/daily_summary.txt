@@ -1,0 +1,48 @@
+{% autoescape off %}RESUMEN DIARIO DE CONVERSACIONES
+{{ fecha }}
+
+Hola {{ destinatario_nombre }},
+
+Espero que te encuentres muy bien.
+
+{% if tiene_conversaciones %}Te comparto el cierre del día, con {{ estadisticas.total_conversaciones }} {% if estadisticas.total_conversaciones == 1 %}nueva conversación{% else %}nuevas conversaciones{% endif %}. Aquí tienes el resumen de la actividad comercial para que puedas revisarlo de un vistazo.
+
+RESUMEN EJECUTIVO
+{{ analisis.resumen_ejecutivo }}
+
+RESULTADOS DEL DÍA
+Conversaciones: {{ estadisticas.total_conversaciones }}
+Escalados: {{ estadisticas.escalados }}
+En proceso: {{ estadisticas.en_proceso }}
+Descartados: {{ estadisticas.descartados }}
+
+DISTRIBUCIÓN DE CONVERSACIONES
+Cantidades y porcentajes sobre el total del día.
+{% for grafica in graficas %}
+{{ grafica.titulo }}
+{% for fila in grafica.filas %}- {{ fila.nombre }}: {{ fila.cantidad }} ({{ fila.porcentaje }}%)
+{% empty %}Sin datos para esta distribución.
+{% endfor %}{% endfor %}
+CONVERSACIONES DEL DÍA
+Te comparto las fichas con la información registrada de cada conversación.
+{% for tarjeta in tarjetas_conversaciones %}
+Conversación #{{ tarjeta.id }} — {{ tarjeta.estado }}
+Nombre: {{ tarjeta.contacto.nombre|default:"No registrado" }}
+Empresa: {{ tarjeta.contacto.empresa|default:"No registrada" }}
+Correo: {{ tarjeta.contacto.correo|default:"No registrado" }}
+Teléfono: {{ tarjeta.contacto.telefono|default:"No registrado" }}
+Canal: {{ tarjeta.canal }}
+Unidad de negocio: {{ tarjeta.unidad_negocio }}
+
+Situación del prospecto: {{ tarjeta.situacion.estado }}. {{ tarjeta.situacion.motivo }}
+Resumen de la conversación: {{ tarjeta.resumen_conversacion|default:"Sin resumen registrado." }}
+Resumen de la empresa: {{ tarjeta.resumen_empresa|default:"Sin resumen registrado." }}
+{% endfor %}{% else %}Te comparto una breve actualización del cierre del {{ fecha }}: no se registraron nuevas conversaciones durante ese día.
+
+Quería mantenerte al tanto de la actividad comercial, también en los días sin nuevos registros.
+{% endif %}
+Que tengas un buen día.
+
+Saludos cordiales,
+Sofía de Estrasol
+{% endautoescape %}

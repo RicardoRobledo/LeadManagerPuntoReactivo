@@ -1,0 +1,35 @@
+{
+  "lote": "prueba-recordatorios-20261022",
+  "smtp_real": false,
+  "datos_originales_conservados": true,
+  "escenarios": [
+    {
+      "escenario": "Estados actuales",
+      "resultado": {
+        "procesados": 0,
+        "dry_run": true,
+        "candidatos": 1,
+        "simulados": 1,
+        "sin_correo_valido": 0
+      },
+      "ids_simulados": [
+        286
+      ]
+    },
+    {
+      "escenario": "Una amarilla por canal, solo dentro de esta transacción",
+      "resultado": {
+        "procesados": 0,
+        "dry_run": true,
+        "candidatos": 3,
+        "simulados": 3,
+        "sin_correo_valido": 0
+      },
+      "ids_simulados": [
+        282,
+        284,
+        286
+      ]
+    }
+  ]
+}

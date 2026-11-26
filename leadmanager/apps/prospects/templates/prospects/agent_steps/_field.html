@@ -1,0 +1,12 @@
+{% if field.field.widget.input_type == 'checkbox' %}
+<div>
+  <label class="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700">{{ field }}<span>{{ field.label }}</span></label>
+  <p id="error_{{ field.name }}" data-prompt-error="{{ field.name }}" hidden class="mt-2 text-sm text-red-600"></p>
+</div>
+{% else %}
+<div>
+  <label for="{{ field.id_for_label }}" class="mb-2 block text-sm font-semibold text-slate-700">{{ field.label }}</label>
+  {{ field }}
+  <p id="error_{{ field.name }}" data-prompt-error="{{ field.name }}" hidden class="mt-2 text-sm text-red-600"></p>
+</div>
+{% endif %}

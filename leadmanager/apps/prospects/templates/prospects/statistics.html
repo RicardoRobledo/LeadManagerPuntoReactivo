@@ -1,0 +1,681 @@
+{% extends 'prospects/base_dashboard.html' %}
+
+{% block title %}Análisis de tendencias | Lead Manager{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+
+<style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .card-shadow { box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }
+</style>
+
+{# ---- Datos serializados de forma segura (no |safe) ---- #}
+{{ total_by_day|json_script:"data-total" }}
+{{ email_by_day|json_script:"data-email" }}
+{{ form_by_day|json_script:"data-form" }}
+{{ web_by_day|json_script:"data-web" }}
+{{ linkedin_by_day|json_script:"data-linkedin" }}
+{{ whatsapp_by_day|json_script:"data-whatsapp" }}
+{{ messenger_by_day|json_script:"data-messenger" }}
+{{ instagram_by_day|json_script:"data-instagram" }}
+{{ qualification_by_source|json_script:"data-qualification-source" }}
+
+<div class="w-full min-h-screen panel-background p-4 sm:p-6 lg:p-10">
+    <div class="max-w-7xl mx-auto">
+
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+            <div>
+                <span class="text-indigo-600 font-semibold text-sm tracking-widest uppercase">Centro de inteligencia</span>
+                <h2 class="text-3xl md:text-4xl font-black text-slate-900 mt-1 tracking-tight">Tendencias de prospectos</h2>
+                <p class="text-slate-500 mt-2 text-lg">Seguimiento del crecimiento y la eficiencia operativa.</p>
+
+                {# Contra que se compara, explicito: sin esto los porcentajes no dicen nada. #}
+                <p class="text-slate-400 mt-1 text-sm">
+                    <span class="font-semibold text-slate-600">{{ range_label }}</span>
+                    en comparación con {{ previous_label }}
+                </p>
+            </div>
+
+            <form method="get" class="flex flex-wrap items-center gap-2">
+                <select
+                    name="interval"
+                    id="period-selector"
+                    class="px-4 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl shadow-sm cursor-pointer hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+
+                    <option value="today" {% if interval == 'today' %}selected{% endif %}>Hoy</option>
+                    <option value="week" {% if interval == 'week' %}selected{% endif %}>Esta semana</option>
+                    <option value="month" {% if interval == 'month' %}selected{% endif %}>Este mes</option>
+                    <option value="last_month" {% if interval == 'last_month' %}selected{% endif %}>Mes pasado</option>
+                    <option value="year" {% if interval == 'year' %}selected{% endif %}>Este año</option>
+                    <option value="custom" {% if interval == 'custom' %}selected{% endif %}>Rango personalizado…</option>
+                </select>
+
+                <div
+                    id="custom-range"
+                    class="flex items-center gap-2 {% if interval != 'custom' %}hidden{% endif %}">
+
+                    <input
+                        type="date"
+                        name="date_from"
+                        value="{{ date_from_input }}"
+                        class="px-3 py-2.5 text-sm text-slate-600 bg-white border border-slate-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+
+                    <span class="text-slate-400 text-sm">—</span>
+
+                    <input
+                        type="date"
+                        name="date_to"
+                        value="{{ date_to_input }}"
+                        class="px-3 py-2.5 text-sm text-slate-600 bg-white border border-slate-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                </div>
+
+                <select
+                    name="semaforo"
+                    aria-label="Filtrar por estado"
+                    class="px-4 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl shadow-sm cursor-pointer hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                    {% include 'prospects/_state_filter_options.html' %}
+                </select>
+
+                <select
+                    name="utm_source"
+                    class="px-4 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl shadow-sm cursor-pointer hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                    <option value="">Todas las fuentes UTM</option>
+                    {% for s in utm_sources %}
+                    <option value="{{ s }}" {% if utm_source == s %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                </select>
+
+                <select
+                    name="utm_campaign"
+                    class="px-4 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl shadow-sm cursor-pointer hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                    <option value="">Todas las campañas UTM</option>
+                    {% for c in utm_campaigns %}
+                    <option value="{{ c }}" {% if utm_campaign == c %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+
+                <button
+                    type="submit"
+                    class="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition-colors">
+                    Aplicar
+                </button>
+            </form>
+        </div>
+
+        {# ================= KPI CARDS: TODOS LOS SOURCES ================= #}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+
+            <div class="bg-white p-6 rounded-[2rem] border border-slate-100 card-shadow">
+                <p class="text-slate-500 text-sm font-semibold mb-2">Correo</p>
+                <div class="flex items-end justify-between">
+                    <h4 class="text-4xl font-black text-slate-800">{{ email_current|default:0 }}</h4>
+                    <span data-growth-tag="email" class="flex items-center text-sm font-bold px-2 py-1 rounded-lg">
+                        <span data-growth-val="email">0%</span>
+                    </span>
+                </div>
+                <p class="text-xs text-slate-400 mt-4 italic">Periodo anterior: {{ email_last|default:0 }}</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-[2rem] border border-slate-100 card-shadow">
+                <p class="text-slate-500 text-sm font-semibold mb-2">Formulario</p>
+                <div class="flex items-end justify-between">
+                    <h4 class="text-4xl font-black text-slate-800">{{ form_current|default:0 }}</h4>
+                    <span data-growth-tag="form" class="flex items-center text-sm font-bold px-2 py-1 rounded-lg">
+                        <span data-growth-val="form">0%</span>
+                    </span>
+                </div>
+                <p class="text-xs text-slate-400 mt-4 italic">Periodo anterior: {{ form_last|default:0 }}</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-[2rem] border border-slate-100 card-shadow">
+                <p class="text-slate-500 text-sm font-semibold mb-2">chatweb</p>
+                <div class="flex items-end justify-between">
+                    <h4 class="text-4xl font-black text-slate-800">{{ web_current|default:0 }}</h4>
+                    <span data-growth-tag="web" class="flex items-center text-sm font-bold px-2 py-1 rounded-lg">
+                        <span data-growth-val="web">0%</span>
+                    </span>
+                </div>
+                <p class="text-xs text-slate-400 mt-4 italic">Periodo anterior: {{ web_last|default:0 }}</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-[2rem] border border-slate-100 card-shadow">
+                <p class="text-slate-500 text-sm font-semibold mb-2">Messenger</p>
+                <div class="flex items-end justify-between">
+                    <h4 class="text-4xl font-black text-slate-800">{{ messenger_current|default:0 }}</h4>
+                    <span data-growth-tag="messenger" class="flex items-center text-sm font-bold px-2 py-1 rounded-lg">
+                        <span data-growth-val="messenger">0%</span>
+                    </span>
+                </div>
+                <p class="text-xs text-slate-400 mt-4 italic">Periodo anterior: {{ messenger_last|default:0 }}</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-[2rem] border border-slate-100 card-shadow">
+                <p class="text-slate-500 text-sm font-semibold mb-2">WhatsApp</p>
+                <div class="flex items-end justify-between">
+                    <h4 class="text-4xl font-black text-slate-800">{{ whatsapp_current|default:0 }}</h4>
+                    <span data-growth-tag="whatsapp" class="flex items-center text-sm font-bold px-2 py-1 rounded-lg">
+                        <span data-growth-val="whatsapp">0%</span>
+                    </span>
+                </div>
+                <p class="text-xs text-slate-400 mt-4 italic">Periodo anterior: {{ whatsapp_last|default:0 }}</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-[2rem] border border-slate-100 card-shadow">
+                <p class="text-slate-500 text-sm font-semibold mb-2">Instagram</p>
+                <div class="flex items-end justify-between">
+                    <h4 class="text-4xl font-black text-slate-800">{{ instagram_current|default:0 }}</h4>
+                    <span data-growth-tag="instagram" class="flex items-center text-sm font-bold px-2 py-1 rounded-lg">
+                        <span data-growth-val="instagram">0%</span>
+                    </span>
+                </div>
+                <p class="text-xs text-slate-400 mt-4 italic">Periodo anterior: {{ instagram_last|default:0 }}</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-[2rem] border border-slate-100 card-shadow">
+                <p class="text-slate-500 text-sm font-semibold mb-2">LinkedIn</p>
+                <div class="flex items-end justify-between">
+                    <h4 class="text-4xl font-black text-slate-800">{{ linkedin_current|default:0 }}</h4>
+                    <span data-growth-tag="linkedin" class="flex items-center text-sm font-bold px-2 py-1 rounded-lg">
+                        <span data-growth-val="linkedin">0%</span>
+                    </span>
+                </div>
+                <p class="text-xs text-slate-400 mt-4 italic">Periodo anterior: {{ linkedin_last|default:0 }}</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-[2rem] border border-slate-100 card-shadow">
+                <p class="text-slate-500 text-sm font-semibold mb-2">Chats <span class="text-slate-300">(agrupados)</span></p>
+                <div class="flex items-end justify-between">
+                    <h4 class="text-4xl font-black text-slate-800">{{ chats_current|default:0 }}</h4>
+                    <span data-growth-tag="chats" class="flex items-center text-sm font-bold px-2 py-1 rounded-lg">
+                        <span data-growth-val="chats">0%</span>
+                    </span>
+                </div>
+                <p class="text-xs text-slate-400 mt-4 italic">chatweb + Messenger + WhatsApp + Instagram</p>
+            </div>
+
+        </div>
+
+        {# ================= TOTAL + ALERTA SIN CLASIFICAR ================= #}
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-10">
+
+            <div class="bg-indigo-600 p-6 rounded-[2rem] shadow-lg shadow-indigo-200 text-white">
+                <p class="text-indigo-100 text-sm font-semibold mb-2">Total de prospectos</p>
+                <h4 class="text-4xl font-black">{{ total_current|default:0 }}</h4>
+                <div class="mt-4 flex items-center gap-2">
+                    <div class="flex -space-x-2">
+                        <div class="w-6 h-6 rounded-full bg-indigo-400 border-2 border-indigo-600"></div>
+                        <div class="w-6 h-6 rounded-full bg-indigo-300 border-2 border-indigo-600"></div>
+                    </div>
+                    <span class="text-xs text-indigo-100">Periodo anterior: {{ total_last|default:0 }}</span>
+                </div>
+            </div>
+
+            {% if unknown_current %}
+            <div class="lg:col-span-3 bg-amber-50 border border-amber-200 p-6 rounded-[2rem] flex items-center gap-4">
+                <div class="text-4xl font-black text-amber-600">{{ unknown_current }}</div>
+                <div>
+                    <p class="font-bold text-amber-900">Conversaciones sin canal de origen</p>
+                    <p class="text-sm text-amber-700">
+                        These are not included in any breakdown below. Fix the ingestion
+                        before trusting the per-source split.
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+
+        {# ================= GRÁFICAS ================= #}
+        {# Una debajo de la otra: a lo ancho la grafica de volumen respira mejor. #}
+        <div class="grid grid-cols-1 gap-6 mb-10">
+
+            <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 card-shadow">
+                <div class="flex justify-between items-start mb-8">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800">Volumen de interacciones</h3>
+                        <p class="text-sm text-slate-500">Actividad por canal ({{ range_label }})</p>
+                    </div>
+                </div>
+                <div class="h-[380px]">
+                    <canvas id="trendVolumeChart"></canvas>
+                </div>
+                <div id="trend-legend" class="flex flex-wrap gap-x-5 gap-y-2 mt-6"></div>
+            </div>
+
+            <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 card-shadow">
+                <h3 class="text-xl font-bold text-slate-800 mb-2">Distribución por canal</h3>
+                <p class="text-sm text-slate-500 mb-8">{{ range_label }}</p>
+
+                {# Con el ancho completo, la dona y la lista caben lado a lado. #}
+                <div class="flex flex-col lg:flex-row lg:items-center gap-8">
+
+                    <div class="relative shrink-0 w-full lg:w-[280px] h-[280px] flex items-center justify-center">
+                        <canvas id="sourceDoughnut"></canvas>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span class="text-3xl font-black text-slate-800">{{ total_current|default:0 }}</span>
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-tighter">TOTAL</span>
+                        </div>
+                    </div>
+
+                    <div id="source-legend" class="flex-1 space-y-2"></div>
+                </div>
+            </div>
+
+        </div>
+
+        {# ================= ESTADOS DE PROSPECCIÓN ================= #}
+        <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 card-shadow mb-10">
+
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800">Estado de prospección</h3>
+                    <p class="text-sm text-slate-500">Verdes: escalados. Amarillos: en proceso. Rojos y grises: descartados.</p>
+                </div>
+                <div class="flex flex-wrap gap-8">
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Escalados</p>
+                        <p class="text-3xl font-black text-emerald-600">{{ qualified_count|default:0 }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">En proceso</p>
+                        <p class="text-3xl font-black text-amber-600">{{ in_progress_count|default:0 }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Descartados</p>
+                        <p class="text-3xl font-black text-violet-600">{{ discarded_count|default:0 }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tasa</p>
+                        <p class="text-3xl font-black text-slate-800">{{ qualified_rate|default:0 }}%</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                <div>
+                    <h4 class="text-sm font-bold text-slate-700 mb-6">General</h4>
+                    <div class="relative h-[240px] flex items-center justify-center">
+                        <canvas id="qualificationChart"></canvas>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span class="text-2xl font-black text-slate-800">{{ qualified_rate|default:0 }}%</span>
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-tighter">Escalados</span>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-sm font-bold text-slate-700 mb-6">Por canal</h4>
+                    <div class="h-[240px]">
+                        <canvas id="qualificationSourceChart"></canvas>
+                    </div>
+                    <div class="flex flex-wrap gap-5 mt-4">
+                        <span class="flex items-center gap-2 text-xs font-bold text-slate-600">
+                            <span class="w-3 h-3 rounded-full" style="background:#10b981"></span> Escalados
+                        </span>
+                        <span class="flex items-center gap-2 text-xs font-bold text-slate-600">
+                            <span class="w-3 h-3 rounded-full" style="background:#f59e0b"></span> En proceso
+                        </span>
+                        <span class="flex items-center gap-2 text-xs font-bold text-slate-600">
+                            <span class="w-3 h-3 rounded-full" style="background:#8b5cf6"></span> Descartados
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        {# ================= ATRIBUCIÓN (UTMs) ================= #}
+        <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 card-shadow mb-10">
+
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800">Atribución del tráfico</h3>
+                    <p class="text-sm text-slate-500">Origen de los prospectos según {{ range_label }}</p>
+                </div>
+                <div class="flex gap-10">
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Con atribución</p>
+                        <p class="text-3xl font-black text-indigo-600">{{ attributed_count|default:0 }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Sin UTM</p>
+                        <p class="text-3xl font-black text-slate-400">{{ unattributed_count|default:0 }}</p>
+                    </div>
+                </div>
+            </div>
+
+            {% if utm_by_source or utm_by_campaign or traffic_by_origin %}
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                {# ---- Por utm_source ---- #}
+                <div>
+                    <h4 class="text-sm font-bold text-slate-700 mb-4">Por fuente UTM</h4>
+                    <div class="space-y-3">
+                        {% for row in utm_by_source %}
+                        <div>
+                            <div class="flex items-center justify-between gap-3 text-sm mb-1">
+                                <span class="font-semibold text-slate-700 truncate">{{ row.label }}</span>
+                                <span class="text-slate-500 font-bold whitespace-nowrap">{{ row.total }} · {{ row.percent }}%</span>
+                            </div>
+                            <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                                <div class="h-full rounded-full bg-indigo-500" style="width: {{ row.percent }}%"></div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-sm text-slate-400">No hay fuentes UTM en este periodo.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                {# ---- Por utm_campaign ---- #}
+                <div>
+                    <h4 class="text-sm font-bold text-slate-700 mb-4">Por campaña UTM</h4>
+                    <div class="space-y-3">
+                        {% for row in utm_by_campaign %}
+                        <div>
+                            <div class="flex items-center justify-between gap-3 text-sm mb-1">
+                                <span class="font-semibold text-slate-700 truncate">{{ row.label }}</span>
+                                <span class="text-slate-500 font-bold whitespace-nowrap">{{ row.total }} · {{ row.percent }}%</span>
+                            </div>
+                            <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                                <div class="h-full rounded-full bg-fuchsia-500" style="width: {{ row.percent }}%"></div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-sm text-slate-400">No hay campañas UTM en este periodo.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                {# ---- Por traffic_origin ---- #}
+                <div>
+                    <h4 class="text-sm font-bold text-slate-700 mb-4">Por origen del tráfico</h4>
+                    <div class="space-y-3">
+                        {% for row in traffic_by_origin %}
+                        <div>
+                            <div class="flex items-center justify-between gap-3 text-sm mb-1">
+                                <span class="font-semibold text-slate-700 truncate">{{ row.label }}</span>
+                                <span class="text-slate-500 font-bold whitespace-nowrap">{{ row.total }} · {{ row.percent }}%</span>
+                            </div>
+                            <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                                <div class="h-full rounded-full bg-emerald-500" style="width: {{ row.percent }}%"></div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-sm text-slate-400">No hay orígenes de tráfico en este periodo.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+            </div>
+            {% else %}
+            <p class="text-sm text-slate-400">No hay datos de atribución en este periodo.</p>
+            {% endif %}
+
+        </div>
+
+    </div>
+</div>
+
+<script>
+(function () {
+    // Lectura defensiva: si una variable falta en el context, avisa en consola
+    // en vez de tumbar todas las gráficas.
+    const readJSON = (id, fallback = []) => {
+        const el = document.getElementById(id);
+        if (!el) { console.warn('[stats] missing data node:', id); return fallback; }
+        try {
+            const parsed = JSON.parse(el.textContent);
+            if (!Array.isArray(parsed)) {
+                console.warn('[stats] expected array in', id, '->', parsed);
+                return fallback;
+            }
+            return parsed;
+        } catch (e) {
+            console.warn('[stats] bad JSON in', id, e);
+            return fallback;
+        }
+    };
+
+    const SOURCES = [
+        { key: 'email',     label: 'Correo',     color: '#f59e0b' },
+        { key: 'form',      label: 'Formulario',      color: '#ec4899' },
+        { key: 'web',       label: 'chatweb',   color: '#4f46e5' },
+        { key: 'messenger', label: 'Messenger', color: '#0ea5e9' },
+        { key: 'whatsapp',  label: 'WhatsApp',  color: '#22c55e' },
+        { key: 'instagram', label: 'Instagram', color: '#d946ef' },
+        { key: 'linkedin',  label: 'LinkedIn',  color: '#0369a1' },
+    ];
+
+    const totalSeries = readJSON('data-total');
+    const series = {};
+    SOURCES.forEach(s => { series[s.key] = readJSON('data-' + s.key); });
+
+    const monthly = {
+        email:     [{{ email_current|default:0 }},     {{ email_last|default:0 }}],
+        form:      [{{ form_current|default:0 }},      {{ form_last|default:0 }}],
+        web:       [{{ web_current|default:0 }},       {{ web_last|default:0 }}],
+        messenger: [{{ messenger_current|default:0 }}, {{ messenger_last|default:0 }}],
+        whatsapp:  [{{ whatsapp_current|default:0 }},  {{ whatsapp_last|default:0 }}],
+        instagram: [{{ instagram_current|default:0 }}, {{ instagram_last|default:0 }}],
+        linkedin:  [{{ linkedin_current|default:0 }},  {{ linkedin_last|default:0 }}],
+        chats:     [{{ chats_current|default:0 }},     {{ chats_last|default:0 }}],
+    };
+
+    // Sin tope artificial: si creciste 900%, el dashboard debe decir 900%.
+    function getGrowth(curr, last) {
+        if (last === 0) return curr > 0 ? null : 0; // null = "nuevo", no 100%
+        return Number((((curr - last) / last) * 100).toFixed(1));
+    }
+
+    function paintGrowth(key, value) {
+        const el  = document.querySelector(`[data-growth-val="${key}"]`);
+        const tag = document.querySelector(`[data-growth-tag="${key}"]`);
+        if (!el || !tag) return;
+
+        if (value === null) {
+            el.innerText = 'NUEVO';
+            tag.classList.add('bg-sky-50', 'text-sky-600');
+            return;
+        }
+        el.innerText = (value >= 0 ? '↑ ' : '↓ ') + Math.abs(value) + '%';
+        tag.classList.add(
+            ...(value >= 0 ? ['bg-emerald-50', 'text-emerald-500']
+                           : ['bg-rose-50', 'text-rose-500'])
+        );
+    }
+
+    function legendRows(items) {
+        // Los canales en cero se pintan atenuados: siguen a la vista -para
+        // saber que el canal existe y no tuvo actividad- pero el ojo se va
+        // primero a los que si tienen numeros.
+        return items.map(i => {
+            const vacio = !i.total;
+            return `
+            <div class="flex justify-between items-center p-3 bg-slate-50 rounded-2xl${vacio ? ' opacity-50' : ''}">
+                <div class="flex items-center gap-3">
+                    <div class="w-3 h-3 rounded-full" style="background:${i.color}"></div>
+                    <span class="text-sm font-bold text-slate-700">${i.label}</span>
+                </div>
+                <span class="text-sm font-black ${vacio ? 'text-slate-400' : 'text-slate-900'}">${i.total}</span>
+            </div>`;
+        }).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        Object.keys(monthly).forEach(k =>
+            paintGrowth(k, getGrowth(monthly[k][0], monthly[k][1]))
+        );
+
+        Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+        Chart.defaults.color = '#64748b';
+
+        // ---- Barras apiladas por día ----
+        const labels = totalSeries.map(d => d.day);
+
+        new Chart(document.getElementById('trendVolumeChart'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: SOURCES.map(s => ({
+                    label: s.label,
+                    data: series[s.key].map(d => d.total),
+                    backgroundColor: s.color,
+                    borderRadius: 6,
+                    borderSkipped: false,
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { mode: 'index', intersect: false }
+                },
+                scales: {
+                    x: { stacked: true, grid: { display: false } },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        ticks: { precision: 0 },
+                        border: { dash: [5, 5] }
+                    }
+                }
+            }
+        });
+
+        document.getElementById('trend-legend').innerHTML = SOURCES.map(s => `
+            <div class="flex items-center gap-2">
+                <div class="w-3 h-3 rounded-full" style="background:${s.color}"></div>
+                <span class="text-xs font-bold text-slate-600">${s.label}</span>
+            </div>
+        `).join('');
+
+        // ---- Dona: distribución por source ----
+        // Se listan los SIETE canales siempre, tengan o no actividad.
+        // Antes solo salian los que traian datos, asi que un canal en
+        // cero desaparecia de la lista y no habia forma de distinguir
+        // "no tuvo actividad" de "no existe".
+        const distribucion = SOURCES.map(s => ({
+            label: s.label,
+            color: s.color,
+            total: monthly[s.key][0],
+        }));
+
+        const hayDatos = distribucion.some(s => s.total > 0);
+
+        new Chart(document.getElementById('sourceDoughnut'), {
+            type: 'doughnut',
+            data: {
+                labels: distribucion.map(s => s.label),
+                datasets: [{
+                    // Los ceros no dibujan nada en la dona, asi que
+                    // incluirlos no la ensucia: solo alimentan la lista.
+                    data: distribucion.map(s => s.total),
+                    backgroundColor: distribucion.map(s => s.color),
+                    borderWidth: 0,
+                    cutout: '80%'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        document.getElementById('source-legend').innerHTML = hayDatos
+            ? legendRows(distribucion)
+            : '<p class="text-sm text-slate-400 text-center">No hay actividad en este periodo</p>';
+
+        // ================= ESTADOS DE PROSPECCIÓN =================
+        const qualificationSource = readJSON('data-qualification-source');
+        const prospectingStates = [
+            { key: 'qualified', label: 'Escalados', total: {{ qualified_count|default:0 }}, color: '#10b981' },
+            { key: 'in_progress', label: 'En proceso', total: {{ in_progress_count|default:0 }}, color: '#f59e0b' },
+            { key: 'discarded', label: 'Descartados', total: {{ discarded_count|default:0 }}, color: '#8b5cf6' },
+        ];
+
+        new Chart(document.getElementById('qualificationChart'), {
+            type: 'doughnut',
+            data: {
+                labels: prospectingStates.map(state => state.label),
+                datasets: [{
+                    data: prospectingStates.map(state => state.total),
+                    backgroundColor: prospectingStates.map(state => state.color),
+                    borderWidth: 0,
+                    cutout: '72%'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        const sourceMap = {};
+        SOURCES.forEach(s => { sourceMap[s.key] = s.label; });
+
+        const qSourceRows = qualificationSource.map(r => ({
+            ...r,
+            label: sourceMap[r.source] || r.source,
+        }));
+
+        const qSourceEl = document.getElementById('qualificationSourceChart');
+        if (qSourceEl && qSourceRows.length) {
+            new Chart(qSourceEl, {
+                type: 'bar',
+                data: {
+                    labels: qSourceRows.map(r => r.label),
+                    datasets: prospectingStates.map(state => ({
+                        label: state.label,
+                        data: qSourceRows.map(r => r[state.key]),
+                        backgroundColor: state.color,
+                        borderRadius: 6,
+                        borderSkipped: false,
+                    }))
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            beginAtZero: true,
+                            ticks: { precision: 0 },
+                            border: { dash: [5, 5] }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: { display: false },
+                            ticks: { font: { size: 11 }, autoSkip: false }
+                        }
+                    }
+                }
+            });
+        }
+    });
+})();
+
+// Muestra u oculta las dos fechas segun el periodo elegido. El boton
+// Apply es el que envia, igual que en conversaciones.
+(function () {
+    var selector = document.getElementById('period-selector');
+    var rango = document.getElementById('custom-range');
+
+    if (!selector || !rango) return;
+
+    selector.addEventListener('change', function () {
+        rango.classList.toggle('hidden', this.value !== 'custom');
+
+        if (this.value === 'custom') {
+            rango.querySelector('input').focus();
+        }
+    });
+})();
+</script>
+{% endblock %}

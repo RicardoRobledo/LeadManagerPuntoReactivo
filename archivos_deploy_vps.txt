@@ -1,0 +1,328 @@
+ACTUALIZACIÓN VIGENTE PARA EL VPS - 13 DE NOVIEMBRE DE 2026
+======================================================
+
+Este bloque documenta Google Sheets y la búsqueda por correo en Conversaciones.
+La lista indica archivos locales que se deben copiar; no confirma qué versión
+está instalada en el VPS. Copiar la versión actual completa de cada archivo,
+conservando los cambios compartidos con otras sesiones.
+
+ÚLTIMO AJUSTE: IMPORTACIÓN CIRCULAR
+
+Si la integración anterior de Google Sheets ya está subida, actualizar juntos:
+leadmanager/apps/automations/google_sheets_tasks.py (NUEVO)
+leadmanager/apps/automations/agents/prospector_agent/prospector_steps.py
+leadmanager/apps/automations/tasks.py
+
+El step importa desde google_sheets_tasks.py en la cabecera. tasks.py reexporta
+la tarea y conserva su nombre registrado en Celery. Después de copiar los tres,
+ejecutar python manage.py check y reiniciar Django/Gunicorn y el worker.
+Este ajuste no requiere migraciones ni cambios en la hoja. Si la integración
+todavía no está subida, usar la lista completa de nueve archivos de abajo.
+
+1. ARCHIVOS DE EJECUCIÓN QUE SE DEBEN ACTUALIZAR O SUBIR
+
+Google Sheets:
+requirements.txt
+config/settings/base.py
+leadmanager/apps/automations/services/google_sheets_service.py
+leadmanager/apps/automations/agents/prospector_agent/prospector.py
+leadmanager/apps/automations/agents/prospector_agent/prospector_steps.py
+leadmanager/apps/automations/google_sheets_tasks.py
+leadmanager/apps/automations/tasks.py
+
+Búsqueda por correo en Conversaciones:
+leadmanager/apps/prospects/views.py
+leadmanager/apps/prospects/templates/prospects/conversations.html
+
+El servicio google_sheets_service.py y el módulo google_sheets_tasks.py son
+nuevos. Los demás archivos ya existían. Subir los nueve archivos juntos.
+requirements.txt incorpora google-auth==2.62.2.
+
+2. PRUEBAS Y DIAGNÓSTICO OPCIONALES
+
+No son necesarios para ejecutar la aplicación, pero permiten validar el cambio:
+leadmanager/apps/automations/test_google_sheet_step.py
+leadmanager/apps/automations/test_google_sheets_service.py
+leadmanager/apps/automations/test_google_sheets_routing.py
+leadmanager/apps/automations/test_google_sheets_singleton.py
+leadmanager/apps/prospects/test_conversation_search.py
+diagnostico/verificar_integracion.py
+
+El diagnóstico usa SQLite en memoria y bloquea las conexiones de red. Después
+de extraer la tarea al módulo google_sheets_tasks.py, pasaron 126/126 pruebas
+locales y el chequeo de Django terminó correctamente. La validación incluyó
+compatibilidad del nombre de tarea, identidad, agentes de pruebas y búsqueda.
+No se ejecutó un despliegue, no se modificó la base del VPS ni se enviaron
+datos a Google Sheets; no confirma por sí sola la configuración del servidor.
+
+3. CONFIGURACIÓN DEL SERVIDOR Y DEL DOCUMENTO
+
+Conservar el .env del VPS y configurar allí estas dos variables. Los valores
+siguientes son ejemplos de formato; no contienen credenciales reales:
+
+GOOGLE_SHEETS_ID=ID_DEL_DOCUMENTO
+GOOGLE_SHEETS_SERVICE_ACCOUNT=/ruta/privada/google-sheets-service-account.json
+
+GOOGLE_SHEETS_SERVICE_ACCOUNT admite una ruta al archivo JSON de credenciales
+o su contenido JSON. Una ruta relativa se resuelve desde BASE_DIR. En el VPS
+usar una ruta válida de Linux y una cuenta con acceso de Editor al documento.
+Habilitar la API de Google Sheets para el proyecto de esa cuenta.
+No sustituir el .env del servidor por el local ni incluir claves privadas en
+este inventario, en el repositorio o en archivos públicos del servidor.
+
+Cada pestaña de negocio debe conservar estos encabezados en la primera fila:
+FECHA | NOMBRE COMPLETO | CORREO EMPRESARIAL | TELÉFONO | EMPRESA | ID Conversación
+
+Las posiciones pueden variar: el servicio localiza las columnas por nombre.
+Las columnas adicionales del documento se conservan y ESTATUS no se envía ni
+se actualiza. FECHA se registra como día/mes/año, sin hora.
+
+4. COMPORTAMIENTO QUE DEBE QUEDAR ACTIVO
+
+- El orden del prospector incluye generate_prospect_response_step, después
+  register_google_sheet_step y luego generate_history_summary_step.
+- El step toma la unidad de crm_update.unidad_negocio_detectada y los datos
+  disponibles del canal, completados con crm_update.contacto. Se ejecuta para
+  contactos escalados y no escalados, únicamente en producción.
+- La unidad selecciona su pestaña. Si viene vacía se utiliza NO_DETERMINADO.
+- La clave es conversation.pk, el ID interno de ConversationModel, guardado
+  bajo el encabezado exacto ID Conversación. No se utiliza session_id.
+- El servicio consulta ese ID en las pestañas antes de insertar. Mismo ID:
+  conserva la fila existente. Otro ID con el mismo correo: admite otra fila.
+  Las filas históricas sin ID no se asignan automáticamente por correo.
+- register_google_sheet_lead_task realiza el envío en segundo plano, bloquea
+  por conversación durante la consulta/alta y admite hasta tres reintentos
+  adicionales ante GoogleSheetsError, sin repetir IA ni escrituras de Odoo.
+  Su implementación vive en google_sheets_tasks.py; tasks.py la reexporta
+  para que Celery siga descubriéndola.
+- Las funciones del servicio reutilizan cliente, sesión y credenciales por
+  proceso e hilo. El token se renueva mediante google-auth y las consultas de
+  filas siguen siendo actuales. Cambiar el .env exige reiniciar los procesos.
+- La búsqueda de Conversaciones incluye correos mencionados en los mensajes
+  y evita filas repetidas. Continúa respetando fechas, canal y estado; con
+  Hoy no se encuentran conversaciones de otros días.
+
+La tarea está separada en google_sheets_tasks.py. prospector_steps.py puede
+importarla en su cabecera desde ese módulo independiente, sin importar tasks.py
+ni recrear el ciclo de inicialización anterior. Subir juntos prospector_steps.py,
+google_sheets_tasks.py y tasks.py, además del resto de esta entrega, antes de
+reiniciar Django y Celery.
+
+5. PASOS DE DESPLIEGUE PARA ESTE BLOQUE
+
+1) Desde la raíz del proyecto, activar el entorno virtual propio del VPS.
+2) Copiar los nueve archivos de ejecución juntos y configurar las variables y el
+   acceso al documento, conservando .env, medios y migraciones del servidor.
+3) Instalar dependencias y comprobar el arranque:
+
+python -m pip install -r requirements.txt
+python manage.py check
+
+4) Reiniciar Django/Gunicorn y el worker de Celery con los nombres reales de
+   los servicios del VPS. No usar un worker que siga cargando código anterior.
+5) Comprobar que el worker registra esta tarea:
+
+python -m celery -A config inspect registered
+
+leadmanager.apps.automations.tasks.register_google_sheet_lead_task
+
+Este nombre registrado no cambia al extraer la implementación al nuevo módulo.
+Así se conserva la compatibilidad con tareas que ya estaban encoladas. tasks.py
+mantiene su reexportación para el descubrimiento automático de Celery.
+
+Este bloque no añade modelos ni migraciones y no incorpora programación nueva
+en Celery Beat. No requiere collectstatic porque sus cambios de interfaz son
+plantillas HTML. Si se despliegan también otros bloques históricos, revisar sus
+requisitos por separado antes de ejecutar comandos de migración o estáticos.
+No copiar el entorno virtual de Windows, __pycache__, archivos .pyc ni
+celerybeat-schedule al servidor.
+
+FIN DE LA ACTUALIZACIÓN DEL 13 DE NOVIEMBRE DE 2026
+
+
+INVENTARIO HISTÓRICO DEL 28 DE OCTUBRE DE 2026 - SOLO REFERENCIA
+===========================================================
+
+El contenido siguiente se conserva como historial. Sus conteos, estado del
+VPS, versiones y recomendaciones de migraciones no han sido verificados para
+el despliegue actual y NO deben utilizarse como plan vigente. En particular,
+las menciones a requirements.txt sin cambios o a migraciones ya aplicadas
+corresponden a aquella revisión, no al bloque actual de Google Sheets.
+Ninguna lista histórica autoriza a reemplazar, borrar o regenerar las carpetas
+de migraciones del VPS sin comparar antes el historial real del servidor.
+
+INVENTARIO PARA DEPLOY VPS
+Comparacion: estado local actual contra HEAD (incluye archivos nuevos sin commit).
+Commit de referencia: e6df312 2026-10-23 feat(add): project updated with reminders
+Generado UTC: 2026-10-28T19:01:35.2272391Z
+Este reporte no se cuenta a si mismo en el inventario.
+
+ACTUALIZACION SEGUN EL HISTORIAL REAL DEL VPS
+El VPS tiene una cadena distinta: automations hasta 0004_emaildeliverylogmodel y prospects hasta 0013_conversationmodel_web_message_count_and_more, todas aplicadas.
+Para este despliegue conserva las carpetas migrations del VPS. Las nueve migraciones locales de la seccion 5 son inventario local, no archivos que deban copiarse a este servidor.
+De las secciones 1 y 2 corresponden 43 archivos de aplicacion para este VPS: 29 modificados y 14 nuevos, excluyendo las nueve migraciones de la seccion 5.
+El nuevo seed_agents cubre las transformaciones JSON de automations 0010-0017. El cambio de prospects 0018 ya esta en la 0013 aplicada en el VPS.
+Esto no unifica ni modifica el historial de migraciones del servidor.
+
+RESUMEN
+Archivos modificados: 40
+Archivos nuevos: 28
+Codigo, plantillas, JS y migraciones: 29 modificados + 23 nuevos = 52
+Pruebas y diagnosticos: 13
+Documentacion y referencia: 3
+Artefactos de ejecucion excluidos: 37
+
+1. APLICACION - ARCHIVOS MODIFICADOS
+config/settings/base.py
+leadmanager/apps/api/prospects/views.py
+leadmanager/apps/automations/admin.py
+leadmanager/apps/automations/agent_catalog.py
+leadmanager/apps/automations/agent_configuration.py
+leadmanager/apps/automations/agent_prompt_defaults.json
+leadmanager/apps/automations/agents/error_policy.py
+leadmanager/apps/automations/agents/prospector_agent/prompts/generate_prospect_response_prompt.txt
+leadmanager/apps/automations/agents/prospector_agent/prompts/generate_prospect_response_web_prompt.txt
+leadmanager/apps/automations/agents/prospector_agent/prospector_steps.py
+leadmanager/apps/automations/forms.py
+leadmanager/apps/automations/services/conversation_reminders.py
+leadmanager/apps/automations/services/daily_summary.py
+leadmanager/apps/automations/services/odoo_service.py
+leadmanager/apps/automations/tasks.py
+leadmanager/apps/automations/templates/automations/_email_status.html
+leadmanager/apps/automations/templates/automations/email_deliveries.html
+leadmanager/apps/automations/templates/automations/email_delivery_detail.html
+leadmanager/apps/automations/urls.py
+leadmanager/apps/automations/views.py
+leadmanager/apps/pages/templates/webchat/chat.html
+leadmanager/apps/pages/templates/webchat/chat_respaldo.html
+leadmanager/apps/pages/views.py
+leadmanager/apps/prospects/templates/prospects/agents.html
+leadmanager/apps/prospects/templates/prospects/conversations.html
+leadmanager/apps/prospects/templates/prospects/dashboard.html
+leadmanager/apps/prospects/templates/static/agents/agent-prompts.js
+leadmanager/apps/prospects/urls.py
+leadmanager/apps/prospects/views.py
+
+2. APLICACION - ARCHIVOS NUEVOS (PARA ESTE VPS OMITIR LAS MIGRACIONES DE LA SECCION 5)
+leadmanager/apps/automations/agent_preview.py
+leadmanager/apps/automations/migrations/0010_agent_communication_choices.py
+leadmanager/apps/automations/migrations/0011_simplify_default_tone.py
+leadmanager/apps/automations/migrations/0012_communication_checkboxes.py
+leadmanager/apps/automations/migrations/0013_structured_conversation_flow.py
+leadmanager/apps/automations/migrations/0014_service_conversation_flows.py
+leadmanager/apps/automations/migrations/0015_agent_greeting.py
+leadmanager/apps/automations/migrations/0016_remove_greeting_question.py
+leadmanager/apps/automations/migrations/0017_response_style_sliders.py
+leadmanager/apps/automations/reminder_schedule.py
+leadmanager/apps/prospects/agent_configuration_steps.py
+leadmanager/apps/prospects/migrations/0018_alter_notqualifiedcategorymodel_source.py
+leadmanager/apps/prospects/templates/prospects/agent_configuration.html
+leadmanager/apps/prospects/templates/prospects/agent_steps/_field.html
+leadmanager/apps/prospects/templates/prospects/agent_steps/_slider.html
+leadmanager/apps/prospects/templates/prospects/agent_steps/business_units.html
+leadmanager/apps/prospects/templates/prospects/agent_steps/communication.html
+leadmanager/apps/prospects/templates/prospects/agent_steps/conversation_flow.html
+leadmanager/apps/prospects/templates/prospects/agent_steps/escalation.html
+leadmanager/apps/prospects/templates/prospects/agent_steps/reminders.html
+leadmanager/apps/prospects/templates/prospects/agent_steps/sales.html
+leadmanager/apps/prospects/templates/prospects/agent_steps/test.html
+leadmanager/apps/prospects/templates/static/agents/agent-test.js
+
+3. PRUEBAS Y DIAGNOSTICOS (NO REQUERIDOS PARA EJECUTAR LA APLICACION)
+[MODIFICADO] diagnostico/agent_prompts.test.cjs
+[MODIFICADO] diagnostico/preparar_recordatorios.py
+[MODIFICADO] diagnostico/probar_recordatorios.py
+[MODIFICADO] leadmanager/apps/automations/test_agent_catalog.py
+[MODIFICADO] leadmanager/apps/automations/test_conversation_reminders.py
+[MODIFICADO] leadmanager/apps/automations/test_correo_sin_respuesta.py
+[MODIFICADO] leadmanager/apps/automations/test_daily_summary_views.py
+[MODIFICADO] leadmanager/apps/automations/test_email_delivery.py
+[MODIFICADO] leadmanager/apps/automations/tests.py
+[NUEVO] diagnostico/probar_recordatorio_schema_unico.py
+[NUEVO] diagnostico/test_recordatorio_schema_unico.py
+[NUEVO] leadmanager/apps/automations/test_odoo_assignment.py
+[NUEVO] leadmanager/apps/automations/test_qualification_methodology.py
+
+4. DOCUMENTACION Y REFERENCIA (NO REQUERIDOS PARA EJECUTAR LA APLICACION)
+[MODIFICADO] GUIA_AGENTES_IVAN.md
+[MODIFICADO] README.md
+[NUEVO] referencia.txt
+
+5. MIGRACIONES NUEVAS LOCALES - OMITIR DE LA COPIA A ESTE VPS
+leadmanager/apps/automations/migrations/0010_agent_communication_choices.py
+leadmanager/apps/automations/migrations/0011_simplify_default_tone.py
+leadmanager/apps/automations/migrations/0012_communication_checkboxes.py
+leadmanager/apps/automations/migrations/0013_structured_conversation_flow.py
+leadmanager/apps/automations/migrations/0014_service_conversation_flows.py
+leadmanager/apps/automations/migrations/0015_agent_greeting.py
+leadmanager/apps/automations/migrations/0016_remove_greeting_question.py
+leadmanager/apps/automations/migrations/0017_response_style_sliders.py
+leadmanager/apps/prospects/migrations/0018_alter_notqualifiedcategorymodel_source.py
+Las ocho de automations solo convierten datos de AgentModel.prompt; seed_agents actual cubre esas conversiones.
+prospects/0018_alter_notqualifiedcategorymodel_source.py equivale al AlterField de NotQualifiedCategoryModel.source que el VPS ya tiene en su 0013 aplicada.
+Estas migraciones locales dependen de nombres que no existen en la cadena del VPS. Conserva la cadena propia del servidor.
+
+6. PASOS PARA EL VPS (SOLO REFERENCIA; NO SE HAN EJECUTADO)
+Desde el directorio del proyecto y con su entorno virtual activo, despues de subir el codigo actual conservando las migraciones del VPS:
+python manage.py check
+python manage.py seed_agents
+python manage.py collectstatic --noinput
+python manage.py migrate --check
+El VPS ya informo que no hay cambios de modelos ni migraciones pendientes; no se necesita generar otras para estas actualizaciones JSON.
+Reinicia Django/Gunicorn, Celery worker y Celery Beat usando los nombres reales de tus servicios.
+Los archivos de prompt se cargan al arrancar los procesos; requieren reinicio.
+
+7. DETALLES DEL CAMBIO
+requirements.txt, build.sh y manage.py no tienen cambios contra HEAD.
+config/settings/base.py cambia la revision de recordatorios de cada 12 horas a cada hora.
+config/settings/base.py incorpora ODOO_SELLER_ID (por defecto 14) y ODOO_SELLER_NAME (por defecto Ignacio Navarro).
+seed_agents conserva la configuracion existente. Copiar agent_prompt_defaults.json no reemplaza los ajustes guardados en la BD del VPS.
+Las conversiones JSON de automations 0010-0017 se realizan en este VPS mediante seed_agents actual, sin registrar ni aplicar la cadena local.
+La normalizacion actual no renombra la antigua clave descubrimiento_calificacion a flujo_conversacion; si existiera esa clave vieja en la BD del VPS, necesita revision aparte.
+chat_respaldo.html es un respaldo modificado; esta incluido en la lista, aunque el chat activo utiliza chat.html.
+referencia.txt es un diagnostico con contexto de un prospecto; no se necesita en el servidor.
+DESPLIEGUE_VPS.md tiene un inventario anterior y no coincide con este estado contra HEAD.
+
+8. EXCLUIR DE LA COPIA
+Conserva .env y .env2 del VPS; no copies credenciales locales ni el venv de Windows.
+No copies __pycache__/, *.pyc ni celerybeat-schedule*.
+Este inventario adaptado permite copiar los archivos de aplicacion conservando las migraciones del VPS. Un despliegue mediante Git requiere conciliar primero las dos cadenas distintas de migraciones.
+
+ARTEFACTOS DE EJECUCION DETECTADOS (EXCLUIDOS DEL INVENTARIO PRINCIPAL)
+celerybeat-schedule
+celerybeat-schedule-shm
+celerybeat-schedule-wal
+config/settings/__pycache__/base.cpython-313.pyc
+leadmanager/apps/api/prospects/__pycache__/views.cpython-313.pyc
+leadmanager/apps/automations/__pycache__/admin.cpython-313.pyc
+leadmanager/apps/automations/__pycache__/agent_catalog.cpython-313.pyc
+leadmanager/apps/automations/__pycache__/agent_configuration.cpython-313.pyc
+leadmanager/apps/automations/__pycache__/forms.cpython-313.pyc
+leadmanager/apps/automations/__pycache__/tasks.cpython-313.pyc
+leadmanager/apps/automations/__pycache__/test_agent_catalog.cpython-313.pyc
+leadmanager/apps/automations/__pycache__/test_correo_sin_respuesta.cpython-313.pyc
+leadmanager/apps/automations/__pycache__/test_daily_summary_views.cpython-313.pyc
+leadmanager/apps/automations/__pycache__/urls.cpython-313.pyc
+leadmanager/apps/automations/__pycache__/views.cpython-313.pyc
+leadmanager/apps/automations/agents/__pycache__/error_policy.cpython-313.pyc
+leadmanager/apps/automations/agents/prospector_agent/__pycache__/prospector_steps.cpython-313.pyc
+leadmanager/apps/automations/services/__pycache__/conversation_reminders.cpython-313.pyc
+leadmanager/apps/automations/services/__pycache__/daily_summary.cpython-313.pyc
+leadmanager/apps/automations/services/__pycache__/odoo_service.cpython-313.pyc
+leadmanager/apps/pages/__pycache__/views.cpython-313.pyc
+leadmanager/apps/prospects/__pycache__/urls.cpython-313.pyc
+leadmanager/apps/prospects/__pycache__/views.cpython-313.pyc
+leadmanager/apps/automations/__pycache__/agent_preview.cpython-313.pyc
+leadmanager/apps/automations/__pycache__/reminder_schedule.cpython-313.pyc
+leadmanager/apps/automations/__pycache__/test_conversation_reminders.cpython-313.pyc
+leadmanager/apps/automations/__pycache__/test_email_delivery.cpython-313.pyc
+leadmanager/apps/automations/migrations/__pycache__/0010_agent_communication_choices.cpython-313.pyc
+leadmanager/apps/automations/migrations/__pycache__/0011_simplify_default_tone.cpython-313.pyc
+leadmanager/apps/automations/migrations/__pycache__/0012_communication_checkboxes.cpython-313.pyc
+leadmanager/apps/automations/migrations/__pycache__/0013_structured_conversation_flow.cpython-313.pyc
+leadmanager/apps/automations/migrations/__pycache__/0014_service_conversation_flows.cpython-313.pyc
+leadmanager/apps/automations/migrations/__pycache__/0015_agent_greeting.cpython-313.pyc
+leadmanager/apps/automations/migrations/__pycache__/0016_remove_greeting_question.cpython-313.pyc
+leadmanager/apps/automations/migrations/__pycache__/0017_response_style_sliders.cpython-313.pyc
+leadmanager/apps/prospects/__pycache__/agent_configuration_steps.cpython-313.pyc
+leadmanager/apps/prospects/migrations/__pycache__/0018_alter_notqualifiedcategorymodel_source.cpython-313.pyc

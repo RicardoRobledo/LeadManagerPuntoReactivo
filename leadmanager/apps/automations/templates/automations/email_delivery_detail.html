@@ -1,0 +1,26 @@
+{% extends 'prospects/base_dashboard.html' %}
+{% load tz %}
+{% block title %}Intento de correo #{{ delivery.pk }} | Correos{% endblock %}
+{% block content %}
+{% timezone 'America/Mexico_City' %}
+<div class="w-full min-h-screen panel-background p-3 md:p-4">
+  <div class="w-full space-y-6">
+    <header><a href="{% url 'app_automations:email_deliveries' %}" class="text-sm font-medium text-indigo-600 hover:underline">← Volver a correos</a><h1 class="mt-3 text-2xl font-bold text-slate-900">Intento de correo #{{ delivery.pk }}</h1></header>
+    <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div class="mb-6">{% include 'automations/_email_status.html' %}<p class="mt-3 text-sm text-slate-500">{% if delivery.status == 'smtp_accepted' %}El correo salió de nuestro sistema. Este registro no confirma su llegada a la bandeja del destinatario.{% elif delivery.status == 'sending' %}El intento comenzó y todavía no tiene un resultado registrado.{% elif delivery.status == 'skipped' %}El envío se omitió. Consulta el motivo registrado abajo.{% else %}El intento terminó con un error. Consulta el detalle registrado abajo.{% endif %}</p></div>
+      <dl class="grid gap-6 sm:grid-cols-2">
+        <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Destinatario</dt><dd class="mt-2 break-all font-medium text-slate-900">{{ delivery.recipient|default:'Sin destinatario' }}</dd></div>
+        <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Tipo / canal</dt><dd class="mt-2 text-slate-700">{{ delivery.get_kind_display }} · {{ delivery.channel_label }}</dd></div>
+        <div class="sm:col-span-2"><dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Asunto</dt><dd class="mt-2 break-words text-slate-800">{{ delivery.subject|default:'Sin asunto' }}</dd></div>
+        <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Inicio</dt><dd class="mt-2 text-slate-700">{{ delivery.created_at|date:'d/m/Y H:i:s' }}</dd></div>
+        <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Finalización</dt><dd class="mt-2 text-slate-700">{{ delivery.finished_at|date:'d/m/Y H:i:s'|default:'Sin resultado registrado' }}</dd></div>
+        <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Conversación</dt><dd class="mt-2">{% if delivery.conversation_id %}<a href="{% url 'app_prospects:conversations' %}?open_conversation={{ delivery.conversation_id }}" class="font-medium text-indigo-600 hover:underline">Abrir conversación #{{ delivery.conversation_id }}</a>{% else %}<span class="text-slate-500">Sin conversación individual asociada</span>{% endif %}</dd></div>
+      </dl>
+      {% if delivery.error_detail %}<div class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4"><h2 class="font-semibold text-slate-800">Detalle del resultado{% if delivery.error_type %} · {{ delivery.error_type }}{% endif %}</h2><p class="mt-2 whitespace-pre-wrap break-words text-sm text-slate-600">{{ delivery.error_detail }}</p></div>{% endif %}
+      <details class="mt-6 border-t border-slate-100 pt-4"><summary class="cursor-pointer text-sm font-medium text-slate-600">Identificadores para soporte</summary><dl class="mt-4 space-y-4 text-sm"><div><dt class="text-slate-400">Message-ID</dt><dd class="mt-1 break-all font-mono text-slate-700">{{ delivery.message_id|default:'No generado' }}</dd></div><div><dt class="text-slate-400">Tarea</dt><dd class="mt-1 break-all font-mono text-slate-700">{{ delivery.task_id|default:'Sin tarea asociada' }}</dd></div></dl></details>
+    </section>
+    <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><h2 class="border-b border-slate-100 px-6 py-4 font-semibold text-slate-900">Otros intentos relacionados</h2><ul class="divide-y divide-slate-100">{% for attempt in related_attempts %}<li class="flex flex-wrap items-center justify-between gap-3 px-6 py-4"><div><a href="{% url 'app_automations:email_delivery_detail' attempt.pk %}" class="text-sm font-medium text-indigo-600 hover:underline">Intento #{{ attempt.pk }}</a><p class="mt-1 break-all text-xs text-slate-500">{{ attempt.created_at|date:'d/m/Y H:i:s' }} · {{ attempt.recipient|default:'Sin destinatario' }}</p></div>{% include 'automations/_email_status.html' with delivery=attempt %}</li>{% empty %}<li class="px-6 py-6 text-sm text-slate-500">No hay otros intentos relacionados.</li>{% endfor %}</ul></section>
+  </div>
+</div>
+{% endtimezone %}
+{% endblock %}

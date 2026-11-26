@@ -1,0 +1,36 @@
+{% extends 'prospects/base_dashboard.html' %}
+{% block title %}Canales de {{ agent.name }} | Lead Manager{% endblock %}
+{% block extra_head %}<style>
+  .channel-choice input:checked + span .channel-check { color: #4f46e5; border-color: #6366f1; }
+</style>{% endblock %}
+{% block content %}
+<div class="min-h-screen panel-background p-4 sm:p-6 lg:p-8"><div class="mx-auto max-w-xl">
+  {% if channel_conflict %}{% include 'prospects/_channel_conflict_modal.html' with conflict=channel_conflict %}{% endif %}
+  <a href="{% url 'app_prospects:agents' %}" class="text-sm font-semibold text-indigo-700">&larr; Agentes</a>
+  <h1 class="mt-5 text-2xl font-bold text-slate-900">Canales de {{ agent.name }}</h1>
+  <p class="mt-2 text-sm text-slate-500">Selecciona los canales para este agente. Cada canal puede estar asignado a un solo agente activo.</p>
+  <form method="post" class="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">{% csrf_token %}
+    <fieldset><legend class="text-base font-semibold text-slate-900">Selecciona los canales</legend>
+      <p class="mt-1 text-sm text-slate-500">Puedes elegir más de uno y cambiar tu selección cuando lo necesites.</p>
+      <div class="mt-5 grid gap-3 sm:grid-cols-2">{% for checkbox in form.channels %}
+        <label class="channel-choice relative cursor-pointer">{{ checkbox.tag }}
+          <span class="flex min-h-16 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 transition-colors hover:border-indigo-300 peer-checked:border-indigo-500 peer-checked:bg-indigo-50 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-indigo-600">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {% if checkbox.data.value == 'whatsapp' %}bg-emerald-100 text-emerald-700{% elif checkbox.data.value == 'instagram' %}bg-pink-100 text-pink-700{% elif checkbox.data.value == 'linkedin' %}bg-sky-100 text-sky-700{% elif checkbox.data.value == 'messenger' %}bg-blue-100 text-blue-700{% elif checkbox.data.value == 'email' %}bg-orange-100 text-orange-700{% else %}bg-indigo-100 text-indigo-700{% endif %}" aria-hidden="true">
+              {% if checkbox.data.value == 'email' %}<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>
+              {% elif checkbox.data.value == 'form' %}<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="2"/><path stroke-linecap="round" d="M9 8h6M9 12h6M9 16h4"/></svg>
+              {% elif checkbox.data.value == 'linkedin' %}<span class="text-lg font-bold">in</span>
+              {% elif checkbox.data.value == 'instagram' %}<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".8" fill="currentColor" stroke="none"/></svg>
+              {% elif checkbox.data.value == 'whatsapp' %}<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M20 11.5a8 8 0 0 1-11.9 7L4 20l1.3-4a8 8 0 1 1 14.7-4.5Z"/><path stroke-linecap="round" d="M9 8.5c.5 2.7 2.7 4.9 5.5 5.5l1-1.2"/></svg>
+              {% elif checkbox.data.value == 'messenger' %}<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3c-5 0-9 3.7-9 8.4 0 2.5 1.2 4.7 3 6.2V21l3.2-1.8c.9.3 1.8.4 2.8.4 5 0 9-3.6 9-8.2S17 3 12 3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="m7.5 13.5 3.1-3.3 2.5 2 3.4-2.7"/></svg>
+              {% else %}<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linejoin="round" d="M4 5h16v11H9l-5 3V5Z"/><path stroke-linecap="round" d="M8 9h8M8 12h5"/></svg>{% endif %}
+            </span>
+            <span class="min-w-0 flex-1 text-sm font-semibold text-slate-700">{{ checkbox.choice_label }}</span>
+            <span class="channel-check flex h-5 w-5 shrink-0 items-center justify-center rounded border border-slate-300 bg-white text-transparent" aria-hidden="true"><svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m4 10 4 4 8-8"/></svg></span>
+          </span>
+        </label>{% endfor %}</div>
+    </fieldset>
+    {% for error in form.channels.errors %}<p class="mt-4 text-sm text-red-700" role="alert">{{ error }}</p>{% endfor %}
+    <div class="mt-6 flex gap-3"><button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">Guardar canales</button><a href="{% url 'app_prospects:agents' %}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700">Cancelar</a></div>
+  </form>
+</div></div>
+{% endblock %}
