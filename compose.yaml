@@ -111,9 +111,9 @@ services:
 
   web:
     <<: *app
-    # Acceso local para el proxy HTTPS del VPS; la base y Redis no publican puertos.
+    # WEB_BIND_IP=0.0.0.0 permite acceso por IP; 127.0.0.1 para un proxy local.
     ports:
-      - "127.0.0.1:8777:8000"
+      - "${WEB_BIND_IP:-127.0.0.1}:8777:8000"
     depends_on: &app-dependencies
       postgres:
         condition: service_healthy

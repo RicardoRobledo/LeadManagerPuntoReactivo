@@ -34,7 +34,48 @@ Para crear el primer administrador después del primer despliegue, desde el dire
 docker compose --env-file .env.docker exec web python manage.py createsuperuser
 ```
 
-La web se publica en `127.0.0.1:8777`, definido directamente en `compose.yaml`; el puerto interno del contenedor sigue siendo `8000`. Para acceder mediante un dominio, configurar por separado el proxy HTTPS hacia `127.0.0.1:8777` y los ajustes de dominio/CSRF de Django.
+La web usa el puerto `8777` del VPS y el `8000` dentro del contenedor. `WEB_BIND_IP` selecciona la interfaz del VPS; por defecto es `127.0.0.1`, para un proxy local.
+
+### Acceso temporal por la IP pública, sin dominio
+
+Antes de hacer push con estos cambios, entrar al VPS como `deploy` y editar su archivo existente:
+
+```bash
+cd /var/www/LeadManagerPuntoReactivo
+nano .env.docker
+```
+
+Agregar o actualizar estas cuatro variables. Reemplazar `IP_PUBLICA_DEL_VPS` por la dirección IPv4 pública del servidor; mantener las credenciales existentes:
+
+```dotenv
+WEB_BIND_IP=0.0.0.0
+ALLOWED_HOSTS=IP_PUBLICA_DEL_VPS
+CSRF_TRUSTED_ORIGINS=http://IP_PUBLICA_DEL_VPS:8777
+DJANGO_ALLOW_HTTP=True
+```
+
+`ALLOWED_HOSTS` contiene solo la IP, sin protocolo ni puerto. `CSRF_TRUSTED_ORIGINS` incluye `http://` y el puerto. Django conserva `127.0.0.1` y `localhost` para la comprobación de salud de Compose.
+
+Hacer push a `main` y esperar a que terminen correctamente la construcción y el despliegue. La imagen nueva es necesaria para que Django reconozca estas variables. El workflow conserva el `.env.docker` del VPS y aplica su configuración al recrear los contenedores.
+
+Si el proveedor del VPS tiene un firewall activo, permitir entrada TCP al puerto `8777`. Abrir en el navegador:
+
+```text
+http://IP_PUBLICA_DEL_VPS:8777/authentication/login/
+```
+
+Comprobar desde el VPS:
+
+```bash
+docker compose --env-file .env.docker ps
+curl -I http://127.0.0.1:8777/authentication/login/
+```
+
+El login debe devolver `200`. Si funciona desde el VPS pero el navegador agota el tiempo de espera, revisar la IP utilizada y las reglas del firewall del proveedor. Los puertos publicados por Docker pueden saltarse las reglas de UFW; controlar el acceso mediante el firewall del proveedor o reglas compatibles con Docker, según su [documentación de firewalls](https://docs.docker.com/engine/network/packet-filtering-firewalls/#docker-and-ufw).
+
+Esta modalidad usa HTTP y las credenciales viajan sin cifrado. Usarla temporalmente para pruebas; Django recomienda [HTTPS para sitios con inicio de sesión](https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/#https).
+
+Al configurar HTTPS, volver a `DJANGO_ALLOW_HTTP=False` y `WEB_BIND_IP=127.0.0.1`, establecer el dominio en `ALLOWED_HOSTS` y `https://DOMINIO` en `CSRF_TRUSTED_ORIGINS`, y dirigir el proxy hacia `127.0.0.1:8777`.
 
 ## Actualización vigente: retirada de Google Sheets
 
