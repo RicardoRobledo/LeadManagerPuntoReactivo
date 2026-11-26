@@ -34,7 +34,7 @@ Para crear el primer administrador después del primer despliegue, desde el dire
 docker compose --env-file .env.docker exec web python manage.py createsuperuser
 ```
 
-La web sigue publicada en `127.0.0.1:8000`. Para acceder mediante un dominio, configurar por separado el proxy HTTPS y los ajustes de dominio/CSRF de Django.
+La web se publica en `127.0.0.1:8777`, definido directamente en `compose.yaml`; el puerto interno del contenedor sigue siendo `8000`. Para acceder mediante un dominio, configurar por separado el proxy HTTPS hacia `127.0.0.1:8777` y los ajustes de dominio/CSRF de Django.
 
 ## Actualización vigente: retirada de Google Sheets
 
